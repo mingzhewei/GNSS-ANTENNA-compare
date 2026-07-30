@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天线选型判定逻辑 · 场景化评估框架（四臂螺旋 × 机器狗 × 城市环境）</title>
+<style>
+  :root{
+    --c-none:#9aa0a6; --c-blue:#4a90d9; --c-orange:#e8963c; --c-green:#43a567;
+    --c-purple:#8e6fc0; --c-teal:#3aa6a6; --c-red:#d9634f;
+    --ink:#1f2329; --sub:#5f6368; --line:#e5e7eb; --bg:#f5f6f8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+       font-size:14px;line-height:1.75}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 60px}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:28px 0 20px;margin-bottom:8px}
+  header .wrap{padding-bottom:0}
+  h1{font-size:24px;margin:0 0 6px}
+  h2{font-size:18px;margin:34px 0 12px;padding-left:10px;border-left:4px solid var(--c-blue)}
+  h3{font-size:15px;margin:18px 0 8px}
+  p{margin:8px 0}
+  code{background:#eef1f4;padding:1px 6px;border-radius:4px;font-size:12.5px;
+       font-family:"SF Mono",Menlo,Consolas,monospace}
+  .sub{color:var(--sub);font-size:13px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:14px 0}
+  .note{background:#fff8e6;border:1px solid #f0d88a;border-radius:10px;padding:14px 18px;margin:14px 0}
+  .note b{color:#8a6d1a}
+  .warn{background:#fdeeee;border:1px solid #f0b9b3;border-radius:10px;padding:14px 18px;margin:14px 0}
+  .warn b{color:#a03a30}
+  .key{background:#eaf7ee;border:1px solid #a8d8b8;border-radius:10px;padding:14px 18px;margin:14px 0}
+  .key b{color:#1e6b3a}
+  nav.toc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:14px 0;
+          font-size:13px;display:flex;flex-wrap:wrap;gap:6px 16px}
+  nav.toc a{color:#2b6cb0;text-decoration:none}
+  nav.toc a:hover{text-decoration:underline}
+  table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f0f2f5;font-weight:600;white-space:nowrap}
+  td.num{font-family:"SF Mono",Menlo,Consolas,monospace;white-space:nowrap}
+  td.ascii{font-family:"SF Mono",Menlo,Consolas,monospace;font-weight:600;white-space:nowrap}
+  .tag{display:inline-block;padding:0 8px;border-radius:10px;font-size:11px;color:#fff;white-space:nowrap}
+  .t-blue{background:var(--c-blue)} .t-orange{background:var(--c-orange)} .t-green{background:var(--c-green)}
+  .t-purple{background:var(--c-purple)} .t-teal{background:var(--c-teal)} .t-red{background:var(--c-red)}
+  .t-none{background:var(--c-none)}
+  .src{display:inline-block;background:#e8f0fb;color:#1a5fb4;border-radius:4px;padding:0 5px;
+       font-size:11px;font-weight:700;font-family:"SF Mono",Menlo,Consolas,monospace}
+  .m2 td{text-align:center}
+  .m2 td:first-child{text-align:left}
+  .win{background:#e6f4e6;font-weight:600}
+  .tree{background:#1f2329;color:#d6e2c8;border-radius:8px;padding:14px 18px;font-size:12.5px;
+        font-family:"SF Mono",Menlo,Consolas,monospace;white-space:pre;line-height:1.7;overflow-x:auto;margin:10px 0}
+  .tree .cm{color:#8a9a7b}
+  .tree .hl{color:#ffd479}
+  footer{color:var(--sub);font-size:12px;border-top:1px solid var(--line);margin-top:36px;padding-top:14px}
+  footer a{color:#2b6cb0;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>天线选型判定逻辑 · 场景化评估框架</h1>
+    <p class="sub">对象：两根四臂螺旋 GNSS 天线（普通型 vs 滤波/抗干扰增强型）＋北云 M21 × 2 · 平台：机器狗（姿态矮、安装位置低）· 环境：城市楼宇间、人行道、树荫下 ·
+      本文是《M21 双天线抗干扰对比测试·采集与判定方案》的上位逻辑：先修正判断框架，再分场景定主/辅判，最后给出整体 Performance 决策流程</p>
+  </div>
+</header>
+<div class="wrap">
+
+<nav class="toc">
+  <span>目录：</span>
+  <a href="#fix">判断框架修正</a>
+  <a href="#facts">天线特性与威胁依据</a>
+  <a href="#scenes">场景库：主判/辅判/推荐</a>
+  <a href="#decision">场景 → 整体决策流程</a>
+  <a href="#measure">各场景怎么测</a>
+  <a href="#rules">判定规则与结论模板</a>
+  <a href="#faq">常见问题</a>
+</nav>
+
+<h2 id="fix">0. 判断框架修正：你指出的问题成立，原逻辑有一个维度被“校正”掉了</h2>
+<div class="key">
+  <p><b>你的洞察（确认成立）：</b>增强型天线加入滤波器 → 滤波器有插入损耗 → <b>无干扰时链路信噪比本身略低</b>；但干扰来临时退化幅度小。普通型天线无此损耗 → 干净环境略强，干扰来临时迅速恶化。两天线本质是“<b>增益—选择性权衡（gain–selectivity tradeoff）</b>”上的两个设计点。</p>
+  <p><b>原方案的盲区：</b>《M21 采集与判定方案》第 4.2 节的基线校准 δ<sub>sys</sub> 会把“无干扰增益差”（含滤波器插损）当作固定偏移<b>扣除</b>。因此“干扰段校正差值”只回答“<b>抗干扰维度谁强</b>”，完全不回答“<b>干净环境谁强</b>”——而后者恰恰是你的机器狗在大部分时间里身处的状态。两个维度必须分别测量、并列报告，缺一就会得出片面结论。</p>
+</div>
+<div class="card">
+  <h3>修正后的二维评价框架</h3>
+  <table>
+    <tr><th style="width:170px">维度</th><th>测量方法（双 M21 同步同环境）</th><th style="width:250px">回答的问题</th></tr>
+    <tr><td><b>维度一 · 干净性能</b></td><td>基线段（无干扰）同历元逐星配对，直接取 C/No<sub>A</sub> − C/No<sub>B</sub> 的中位数，<b>不做 δ 校正</b>——同一环境下绝对值差就是两天线真实增益差（含滤波器插损、馈线、LNA 噪声系数的合成）</td><td>没有干扰时，谁的接收能力更强？（预计：普通型略占优，幅度即滤波器插损量级）</td></tr>
+    <tr><td><b>维度二 · 抗扰性能</b></td><td>干扰段同历元配对，先扣 δ<sub>sys</sub> 再取中位数（原方案方法）；并辅以 ΔC/N0 自身退化量、失锁率、PLL 保持率</td><td>干扰来临时，谁的退化更小、更能保住跟踪？（预计：增强型占优）</td></tr>
+  </table>
+  <h3>2×2 判定矩阵（两根天线各落入一格）</h3>
+  <table class="m2">
+    <tr><th></th><th>抗扰维度强<br>（校正优势 ≥ 0.5 dB）</th><th>抗扰维度无显著差异<br>（|中位数| &lt; 0.5 dB 或 p ≥ 0.05）</th></tr>
+    <tr><th style="text-align:left">干净维度强<br>（基线优势 ≥ 0.5 dB）</th><td class="win">① <b>全场景首选</b>：平时强、乱时也强<br>→ 直接判定全场景适用</td><td>② <b>常态占优型</b>：平时强，乱时相当<br>→ 城市场景（多径/遮挡为常态）推荐</td></tr>
+    <tr><th style="text-align:left">干净维度无显著差异或弱<br>（|中位数| &lt; 0.5 dB 或为负）</th><td>③ <b>扰动占优型</b>：平时相当/略亏，乱时强<br>→ 干扰密集或强干扰风险场景推荐</td><td>④ <b>无显著差异</b>：两天线性能等同<br>→ 按价格/供货/一致性等其他因素决定</td></tr>
+  </table>
+  <p class="sub">门限 0.5 dB 与 ETSI 1 dB 判据（EN 303 413 Eq.4-1）相容且更严格；“无显著差异”同时要求 |中位数| &lt; 0.5 dB <b>且</b> Wilcoxon p ≥ 0.05——回应你“两根天线差异可能没那么大”的担心：差异不显著时框架会如实给出“无显著差异”而不是强行分胜负。</p>
+</div>
+
+<h2 id="facts">1. 天线特性与环境威胁：判断逻辑的事实基础</h2>
+<div class="card">
+  <h3>1.1 四臂螺旋天线的特性（有文献依据）</h3>
+  <table>
+    <tr><th style="width:190px">特性</th><th>依据</th></tr>
+    <tr><td>低仰角（地平线方向）增益高，卫星升起即易捕获，俯仰/横滚动态下失锁更少</td><td><a href="http://ael.cbnu.ac.kr/lectures/graduate/전파공학실험/2019-1/lecture-notes/08-propagation-measurements/08a-radiowave-propagation.pdf">AEL 电波传播讲义</a>：四臂螺旋等垂直高轮廓天线“tend to have high radiation gain patterns at the horizon”</td></tr>
+    <tr><td>同一特性带来代价：<b>更易受低角度多径影响</b>（more susceptible to low angle multipath）</td><td>同上讲义</td></tr>
+    <tr><td>扼流圈/蘑菇头以方向图抑制低仰角与后向信号来抗多径，但会同时削弱低仰角 LOS 信号</td><td><a href="https://prism.ucalgary.ca/bitstreams/d14de4d8-8a8e-47af-9349-f99cc60359b3/download">Calgary PRISM 多径抑制综述</a>；<a href="https://www.frontiersin.org/journals/physics/articles/10.3389/fphy.2022.1071539/pdf">Frontiers 综述</a></td></tr>
+  </table>
+  <p>你说的“四臂螺旋抗干扰较弱、低纬度收星更好”与文献一致。对机器狗的意义要分两面看：<b>姿态矮、安装低 → 中高仰角卫星常被自身机体/地形遮挡，低仰角星是收星数量的关键补充——四臂螺旋的方向图正好补这个短板</b>；但同一方向图也把地面/楼面反射的低角多径一并放大接收。</p>
+  <h3>1.2 城市环境威胁构成（有文献依据）</h3>
+  <p>城市环境对 GNSS 的三大影响【<a href="https://theses.hal.science/tel-02917903/document">HAL 博士论文</a>】：① <b>多径</b>——楼宇/地面/路灯/<b>树叶</b>的反射衍射回波叠加在直达信号上，“城市峡谷中最有害的误差源之一”（<a href="https://enac.hal.science/hal-01759189/file/document(1).pdf">ENAC</a>）；② <b>衰减/遮挡</b>——楼宇树木部分或全部阻断 LOS；③ <b>干扰</b>——以带内连续波等为主。NLOS（只剩反射）伪距误差典型数十米、可超 1 km【<a href="https://www.cambridge.org/core/journals/journal-of-navigation/article/height-aiding-cn0-weighting-and-consistency-checking-for-gnss-nlos-and-multipath-mitigation-in-urban-areas/AD1F8EFE7138F75114175AB26193D8FA">Cambridge J. Navigation</a>】。</p>
+  <div class="warn"><b>关键推论（本框架的立论之一）：</b>机器狗日常穿行的城市环境里，<b>多径与遮挡/衰减是“全程常态”，而 15 cm 级别的强带外干扰是“偶发事件”</b>。滤波器只能压制带外/近带干扰——<b>对同频的多径回波无能为力</b>（多径与信号同频率同制式，任何滤波器都无法区分）。因此“抗扰维度”的权重应按任务中强干扰的真实出现频率来定，不能把实验室 15 cm 极端测试的结论直接外推为全天候结论。【V 工程推理，依据上述威胁构成】</div>
+</div>
+
+<h2 id="scenes">2. 场景库：每个场景的主判、辅判与推荐天线</h2>
+<p>五个场景覆盖机器狗的典型工况。<b>主判</b> = 该场景下直接决定成败的指标；<b>辅判</b> = 解释与旁证。推荐列写的是“天线类型逻辑”——哪根实测天线对应哪种类型，由你按第 4 节数据填入。</p>
+<div class="card">
+<table>
+  <tr><th style="width:130px">场景</th><th style="width:180px">主要威胁</th><th style="width:210px">主判指标</th><th style="width:190px">辅判指标</th><th>推荐天线逻辑</th></tr>
+  <tr>
+    <td><b>S1 开阔天空</b><br>操场/公园/校园大道</td>
+    <td>基本无威胁，仅有环境底噪</td>
+    <td>① <b>基线绝对 C/No 中位数</b>（维度一，不校正）<br>② 可见星数/历元</td>
+    <td>低仰角（&lt;15°）星的 C/No 与数量；定位精度（GST）</td>
+    <td>干净性能强者（预计普通型，幅度=滤波器插损）。此场景滤波器只有代价没有收益。</td>
+  </tr>
+  <tr>
+    <td><b>S2 城市楼宇间</b><br>街道两侧高楼</td>
+    <td><b>多径 + 遮挡</b>（同频回波，滤波器无效）；几何构型差</td>
+    <td>① <b>伪距质量</b>：psr res 中位数、RANGECMPB 伪距标准差等级<br>② <b>定位连续性</b>：pos type 保持高等级的时间占比、定位漂移（GST/标准差）<br>③ 可用星数保持率</td>
+    <td>TRACKSTAT 跟踪状态分布（PLL/FLL 占比）；INS 状态（是否 INS_HIGH_VARIANCE）；多径指纹 = C/No 未大降但伪距/残差恶化</td>
+    <td><b>取决于实测</b>：滤波器在此场景理论上无收益（多径同频），故干净性能强者（普通型）通常更有利——更高增益 = 弱信号/低仰角星余量更大、可用星更多。但若实测发现某根在多径下残差更小（可能因方向图或轴比设计差异），以数据为准。</td>
+  </tr>
+  <tr>
+    <td><b>S3 树荫下</b></td>
+    <td><b>信号衰减</b>（树叶遮挡损耗）＋树叶多径</td>
+    <td>① <b>弱信号保持</b>：低 C/No 星（25–32 dB-Hz）的存活率与 locktime 持续性<br>② 可用星数保持率<br>③ 定位连续性（同 S2）</td>
+    <td>C/No 分布曲线的低端尾部；失锁率；重捕时间</td>
+    <td>衰减型场景中“起始增益高 1–2 dB”直接决定弱星是否跌穿跟踪门限——<b>干净性能强者（普通型）占优</b>。这是滤波器插损最吃亏的场景。</td>
+  </tr>
+  <tr>
+    <td><b>S4 人行道/路口</b></td>
+    <td>间歇性带外干扰（行人手机/店铺 Wi-Fi）＋动态遮挡</td>
+    <td>① <b>综合保持率</b>：可用星数、定位等级时间占比<br>② 干扰事件期间的 ΔC/N0 退化</td>
+    <td>失锁率；PLL 保持率；干扰事件前后恢复时间</td>
+    <td>若干扰事件稀疏且弱 → 干净性能强者；若干扰事件频繁（商业区密集人流）→ 两维加权，见第 3 节。</td>
+  </tr>
+  <tr>
+    <td><b>S5 强干扰邻近</b><br>实验室 15 cm 测试/已知干扰源区域</td>
+    <td><b>带外/近带阻塞</b>（Wi-Fi/4G/对讲机，392 MHz 谐波近带）</td>
+    <td>① <b>校正 ΔC/N0 中位数</b>（维度二，δ 校正后）<br>② 失锁率、PLL 保持率</td>
+    <td>丢失星数；定位降级轨迹；ETSI 式功率阶梯退化曲线</td>
+    <td>抗扰性能强者（预计增强型）。这是滤波器的主场，也是《M21 采集与判定方案》覆盖的场景。</td>
+  </tr>
+</table>
+</div>
+<div class="note"><b>主/辅判的场景化理由小结：</b>S1 信号充足，比的是“谁收得更满”——绝对 C/No 为主判；S2/S3 的威胁在同频与衰减域，C/No 不再是充分指标，<b>伪距质量与定位连续性升为主判</b>；S5 的威胁在带外功率域，校正 ΔC/N0 与环路稳健性为主判。失锁率、PLL 保持、丢失星数在所有场景都是辅判——它们是“结果证据”，用来解释主判的变化。</div>
+
+<h2 id="decision">3. 场景 → 整体 Performance 决策流程</h2>
+<div class="card">
+  <h3>3.1 决策树（按序执行，到哪一步出结论就在哪一步停）</h3>
+  <div class="tree"><span class="cm"># 输入：S1–S5 各场景的实测结果（第 4 节方法）；task_profile = 各场景在任务中的时间占比</span>
+
+<b>步骤 1｜二维定性</b>：把两根天线分别填入 2×2 矩阵（第 0 节）
+  若一根落 ①（干净强 且 抗扰强） → <span class="hl">直接判定全场景适用，结束</span>
+
+<b>步骤 2｜全场景横扫检查</b>：逐场景比较主判指标
+  若同一根天线在 S1–S5 全部场景主判均不劣（≥持平）且至少 2 个场景显著占优
+   → <span class="hl">判定该天线全场景适用，结束</span>
+
+<b>步骤 3｜各有所长（典型：普通型赢 S1/S3，增强型赢 S5）</b> → 加权评分卡：
+  每场景：主判胜者得 1 分，持平各 0.5 分
+  总分 = Σ（场景分 × 场景时间占比权重 w<sub>i</sub>）
+  权重 w<sub>i</sub> 由任务实际决定（建议初值见下表）
+
+<b>步骤 4｜平局/不显著处理</b>（总分差 &lt; 0.5 分或关键维度均“无显著差异”）：
+  按 tie-breaker 规则（3.3 节）裁决，或判“性能等同，按价格/供货/一致性选择”</div>
+
+  <h3>3.2 加权评分卡（模板 + 建议权重初值）</h3>
+  <table class="m2">
+    <tr><th>场景</th><th>主判指标</th><th>天线 A 得分</th><th>天线 B 得分</th><th>建议权重 w<sub>i</sub>（机器狗城市任务）</th><th>加权 A</th><th>加权 B</th></tr>
+    <tr><td>S1 开阔天空</td><td>基线绝对 C/No</td><td></td><td></td><td class="num">0.20</td><td></td><td></td></tr>
+    <tr><td>S2 城市楼宇间</td><td>伪距质量 + 定位连续性</td><td></td><td></td><td class="num">0.35</td><td></td><td></td></tr>
+    <tr><td>S3 树荫下</td><td>弱信号保持 + 可用星保持</td><td></td><td></td><td class="num">0.15</td><td></td><td></td></tr>
+    <tr><td>S4 人行道/路口</td><td>综合保持率</td><td></td><td></td><td class="num">0.20</td><td></td><td></td></tr>
+    <tr><td>S5 强干扰邻近</td><td>校正 ΔC/N0 + 失锁率</td><td></td><td></td><td class="num">0.10</td><td></td><td></td></tr>
+    <tr><td colspan="2"><b>加权总分</b></td><td></td><td></td><td class="num">Σ=1.00</td><td></td><td></td></tr>
+  </table>
+  <p class="sub">权重建议值的依据【V 工程推理】：城市机器狗任务中 S2+S3+S4（多径/遮挡/衰减/间歇弱干扰）占绝大部分时间，强带外干扰（S5）为偶发；S1 权重留给开阔段。请按你的真实任务剖面调整——<b>权重是整个框架中唯一的主观输入，务必团队评审确认</b>；若任务区存在已知强干扰源（变电站/雷达/通信枢纽/恶意干扰风险），把 S5 权重上调至 0.3 以上。</p>
+
+  <h3>3.3 平局时的 Tie-breaker 规则</h3>
+  <table>
+    <tr><th style="width:230px">情形</th><th>裁决</th></tr>
+    <tr><td>两维均无显著差异（矩阵格 ④）</td><td>判性能等同 → 按价格、供货、批次一致性、售后决定。</td></tr>
+    <tr><td>各有所长但加权总分接近（差 &lt; 0.5）</td><td>优先选<b>干净维度强者</b>。理由【V】：遮挡/衰减/多径在机器狗城市任务中全程存在，基线增益余量每一秒都在起作用；强干扰是偶发，且 M21 内置自适应抗干扰算法可在一定程度上兜底【HM M21 手册】。此规则的例外：任务区有已知强干扰风险时反转。</td></tr>
+    <tr><td>干净维度 A 强、抗扰维度 B 强、S5 权重高</td><td>选抗扰强者，并在报告中注明“以牺牲 x.x dB 基线增益为代价换取抗扰余量”。</td></tr>
+  </table>
+</div>
+
+<h2 id="measure">4. 各场景怎么测（与《M21 采集与判定方案》的衔接）</h2>
+<div class="card">
+<table>
+  <tr><th style="width:110px">场景</th><th>测试方法</th><th style="width:290px">数据与处理</th></tr>
+  <tr><td>S1 开阔天空</td><td>开阔场地静态架设 ≥300 s，双机同步；沿用第 1 节 log 配置（TRACKSTAT/BESTPOS/GST/GSV/RANGECMPB 各 1 Hz）</td><td>维度一：同历元配对，基线绝对 C/No 差值中位数（分系统/分频点/分仰角段）；可见星数</td></tr>
+  <tr><td>S2 城市楼宇间</td><td>选典型街道（两侧 ≥5 层楼），机器狗实地行走 10–15 min，双机背架同步记录</td><td>psr res 中位数；RANGECMPB 伪距标准差等级分布；pos type 各等级时间占比；可用星数保持率；多径指纹检查（C/No 尚可但残差大）</td></tr>
+  <tr><td>S3 树荫下</td><td>选连续树荫路段，同上走测 5–10 min（可并入 S2 同一路线分段标记）</td><td>25–32 dB-Hz 弱星存活率；locktime 持续性；可用星保持率；失锁率与重捕时间</td></tr>
+  <tr><td>S4 人行道/路口</td><td>商业区人行道走测 10 min（自然人流与店铺 Wi-Fi）</td><td>综合保持率；标记干扰事件（C/No 普降时段）并单独统计事件期 Δ</td></tr>
+  <tr><td>S5 强干扰邻近</td><td>按《M21 采集与判定方案》执行：干扰源居中 15 cm，基线段→干扰段→恢复段→交换复测</td><td>维度二：校正 ΔC/N0 中位数 + Wilcoxon；失锁率；PLL 保持率；定位降级轨迹</td></tr>
+</table>
+  <p class="sub">S2–S4 为实地走测，两天线固连于同一刚性背架（间距 ≥30 cm、同高度、同姿态），两台 M21 配置完全一致——保证“同星座、同多径环境、同运动状态”三同。走测中干扰源不可控，因此 S4 的结论权重低于实验室 S5。</p>
+</div>
+
+<h2 id="rules">5. 判定规则与结论模板</h2>
+<div class="card">
+  <h3>5.1 单场景判定</h3>
+  <p>每场景主判指标满足：<b>|中位数差| ≥ 0.5 dB（或相应量纲门限）且 Wilcoxon p &lt; 0.05</b> → 判显著占优；否则判持平/不显著。量纲门限：C/No 类 0.5 dB；失锁率/保持率类 2 个百分点；伪距残差/RMS 类 10%；pos type 高等级时间占比 5 个百分点【V 工程门限，与 ETSI 1 dB 判据相容】。</p>
+  <h3>5.2 全场景直接判定</h3>
+  <p>满足以下任一条件，直接判“天线 X 全场景适用”：① 二维矩阵落格 ①（干净强且抗扰强）；② S1–S5 主判全部不劣且 ≥2 场景显著占优。</p>
+  <h3>5.3 结论模板</h3>
+  <div class="note">
+    “在 S1–S5 场景实测中：天线 X 干净维度基线优势 [+a.a / 不显著 / −a.a] dB；抗扰维度校正优势 [+b.b / 不显著] dB（S5，N=n，p=…）。分场景主判：S1 [X/平/Y]、S2 […]、S3 […]、S4 […]、S5 […]。按任务权重 [0.20/0.35/0.15/0.20/0.10] 加权：X 总分 x.x，Y 总分 y.y。<b>判定：天线 X [全场景适用 / 在 S? 场景推荐、S? 场景不推荐 / 与 Y 性能等同]</b>。限定条件：本结论为‘天线＋M21 内置抗干扰算法’的系统级结果【HM】；S5 结论基于 15 cm 近场强干扰，外推至远距离弱干扰时退化幅度按比例缩小。”
+  </div>
+</div>
+
+<h2 id="faq">6. 常见问题（FAQ）</h2>
+<div class="card">
+  <h3>Q1：滤波器对多径真的一点用都没有吗？</h3>
+  <p>对<b>同频</b>多径回波无效——多径与直达信号同频率、同调制，任何带通/陷波滤波器都无法区分（这是信号体制的基本事实【V】）。文献中的抗多径手段是另外两条路：天线方向图抑制低角回波（扼流圈【PRISM】）或接收机端算法（窄相关/PAC——你的 TRACKSTAT 状态字 bits 13–15 能看到相关器类型【P 注2】、多径剔除、NLOS 检测）。所以 S2 场景下滤波器型天线理论上无优势，实测若显示优势，应归因于方向图/轴比等其他设计差异，并在报告中如实说明归因不确定性。</p>
+
+  <h3>Q2：如果两根天线实测差异都很小（都落在“无显著差异”带），怎么办？</h3>
+  <p>这正是框架设计要诚实回答的情形：判矩阵格 ④“性能等同”，按价格/供货/一致性选择，<b>不要为了分出胜负而收窄门限或过度解读噪声</b>。增强设计若真有滤波器，其插损应表现为基线绝对 C/No 稳定低 0.5–2 dB——若连这个都测不到，建议先怀疑“增强设计”是否真的存在滤波链路差异（可向天线供应商索取两款的 S21 传输曲线/规格书对比，这是一手证据【V】）。</p>
+
+  <h3>Q3：权重为什么主观？能不能客观定权？</h3>
+  <p>权重 = 各场景在任务中的时间占比，本质是任务剖面的描述，不存在脱离任务的“客观权重”。客观化的做法：用机器狗历史任务日志统计各场景实际占比；没有这个数据时用第 3.2 节建议初值并经团队评审。权重改变结论时（敏感性），报告中应给出“权重在何范围内结论翻转”的说明。</p>
+
+  <h3>Q4：机器狗低速运动对测试有什么影响？</h3>
+  <p>机器狗步态会带来天线的低频晃动与机体遮挡周期变化：① 走测时双天线刚性固连、同高度同姿态，晃动对两天线一致，对比仍公平；② 四臂螺旋低仰角增益高的特性在晃动下有助于减少失锁【AEL 讲义】，这是该型天线对机器狗平台的固有适配优势，不计入两根天线的相对差异；③ 分析时按 1–5 s 滑动窗口统计即可平滑步态抖动。</p>
+
+  <h3>Q5：S5 实验室结论和 S2–S4 实地结论矛盾时信谁？</h3>
+  <p>不矛盾——它们回答不同维度的问题：S5 回答“强带外干扰下谁退化小”（抗扰维度），S2–S4 回答“多径/遮挡/衰减下谁表现好”（常态维度）。真正矛盾时才说明某根天线存在未预期的设计差异（如方向图差异导致多径表现不同），此时以实地数据为主判、实验室数据解释机理，并在报告中单列该异常供设计端复盘。</p>
+</div>
+
+<footer>
+  <p><b>参考文档与依据：</b></p>
+  <p>
+    天线特性：<a href="http://ael.cbnu.ac.kr/lectures/graduate/전파공학실험/2019-1/lecture-notes/08-propagation-measurements/08a-radiowave-propagation.pdf">AEL 电波传播讲义</a>（四臂螺旋低仰角高增益、更易受低角多径）；<a href="https://prism.ucalgary.ca/bitstreams/d14de4d8-8a8e-47af-9349-f99cc60359b3/download">Calgary PRISM《Machine Learning for Robust Detection and Mitigation of GNSS Multipath》</a>（扼流圈抗多径机理）；<a href="https://www.frontiersin.org/journals/physics/articles/10.3389/fphy.2022.1071539/pdf">Frontiers 多径抑制综述</a>（扼流圈削弱低仰角 LOS 的代价）。<br>
+    城市威胁：<a href="https://theses.hal.science/tel-02917903/document">HAL 博士论文</a>（城市三大问题：多径/衰减遮挡/干扰）；<a href="https://enac.hal.science/hal-01759189/file/document(1).pdf">ENAC</a>（多径为城市峡谷最有害误差源之一）；<a href="https://www.cambridge.org/core/journals/journal-of-navigation/article/height-aiding-cn0-weighting-and-consistency-checking-for-gnss-nlos-and-multipath-mitigation-in-urban-areas/AD1F8EFE7138F75114175AB26193D8FA">Cambridge Journal of Navigation</a>（NLOS 伪距误差典型数十米、可超 1 km）。<br>
+    测量与判据：ETSI EN 303 413（ΔC/N0 ≤ 1 dB 阻塞判据）；JRC 兼容性报告（C/N0 退化/伪距退化/误码率三指标）；《UG016 数据通信接口协议》（TRACKSTAT/GST/GSV/rangecmpb/表 4-23 字段定义）；《OEM7 Commands and Logs Reference Manual v11》（同名 log 的原始定义）；《M21 高精度导航模组用户手册》（内置自适应抗干扰算法，UG016 无开关）。<br>
+    标注说明：【V】为工程推理/工程惯例（权重初值、门限、tie-breaker、多径不可滤除的体制事实、S21 证据建议等），非官方条文；其余结论均注明文献或文档出处。
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

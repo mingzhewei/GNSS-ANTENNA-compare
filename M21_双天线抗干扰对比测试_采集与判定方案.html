@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M21 双天线抗干扰对比测试 · 采集与判定方案</title>
+<style>
+  :root{
+    --c-none:#9aa0a6; --c-blue:#4a90d9; --c-orange:#e8963c; --c-green:#43a567;
+    --c-purple:#8e6fc0; --c-teal:#3aa6a6; --c-red:#d9634f;
+    --ink:#1f2329; --sub:#5f6368; --line:#e5e7eb; --bg:#f5f6f8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+       font-size:14px;line-height:1.75}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 60px}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:28px 0 20px;margin-bottom:8px}
+  header .wrap{padding-bottom:0}
+  h1{font-size:24px;margin:0 0 6px}
+  h2{font-size:18px;margin:34px 0 12px;padding-left:10px;border-left:4px solid var(--c-blue)}
+  h3{font-size:15px;margin:18px 0 8px}
+  p{margin:8px 0}
+  code{background:#eef1f4;padding:1px 6px;border-radius:4px;font-size:12.5px;
+       font-family:"SF Mono",Menlo,Consolas,monospace}
+  .sub{color:var(--sub);font-size:13px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:14px 0}
+  .note{background:#fff8e6;border:1px solid #f0d88a;border-radius:10px;padding:14px 18px;margin:14px 0}
+  .note b{color:#8a6d1a}
+  .warn{background:#fdeeee;border:1px solid #f0b9b3;border-radius:10px;padding:14px 18px;margin:14px 0}
+  .warn b{color:#a03a30}
+  nav.toc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:14px 0;
+          font-size:13px;display:flex;flex-wrap:wrap;gap:6px 16px}
+  nav.toc a{color:#2b6cb0;text-decoration:none}
+  nav.toc a:hover{text-decoration:underline}
+  table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f0f2f5;font-weight:600;white-space:nowrap}
+  td.num{font-family:"SF Mono",Menlo,Consolas,monospace;white-space:nowrap}
+  td.ascii{font-family:"SF Mono",Menlo,Consolas,monospace;font-weight:600;white-space:nowrap}
+  .tag{display:inline-block;padding:0 8px;border-radius:10px;font-size:11px;color:#fff;white-space:nowrap}
+  .t-blue{background:var(--c-blue)} .t-orange{background:var(--c-orange)} .t-green{background:var(--c-green)}
+  .t-purple{background:var(--c-purple)} .t-teal{background:var(--c-teal)} .t-red{background:var(--c-red)}
+  .t-none{background:var(--c-none)}
+  .src{display:inline-block;background:#e8f0fb;color:#1a5fb4;border-radius:4px;padding:0 5px;
+       font-size:11px;font-weight:700;font-family:"SF Mono",Menlo,Consolas,monospace}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:2px 12px;font-size:13px;margin-top:6px}
+  .kv dt{color:var(--sub);white-space:nowrap}
+  .kv dd{margin:0}
+  .good{color:var(--c-green);font-weight:600}.bad{color:var(--c-red);font-weight:600}
+  .cmd{background:#1f2329;color:#d6e2c8;border-radius:8px;padding:12px 16px;font-size:12.5px;
+       font-family:"SF Mono",Menlo,Consolas,monospace;white-space:pre;line-height:1.6;overflow-x:auto;margin:10px 0}
+  .cmd .cm{color:#8a9a7b}
+  footer{color:var(--sub);font-size:12px;border-top:1px solid var(--line);margin-top:36px;padding-top:14px}
+  footer a{color:#2b6cb0;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>M21 双天线抗干扰对比测试 · 采集与判定方案</h1>
+    <p class="sub">测试配置：两台北云 M21（同型号）＋两根天线（一根做过滤波/抗干扰增强），干扰源（Wi-Fi 路由器 / 手机 / 对讲机）置于两天线中点（各距 15 cm），同步采集对比 ·
+      依据：北云《UG016 数据通信接口协议》【P】、《OEM7 Commands and Logs Reference Manual v11》【M】、NovAtel 官方在线文档【N】、ETSI EN 303 413【ETSI】、北云 M21/M21D 用户手册【HM】</p>
+  </div>
+</header>
+<div class="wrap">
+
+<nav class="toc">
+  <span>目录：</span>
+  <a href="#scheme">测试方案总览</a>
+  <a href="#logs">Log 字段与采集频率</a>
+  <a href="#bandwidth">串口带宽核算</a>
+  <a href="#fields">字段含义详解</a>
+  <a href="#judge">天线质量判断逻辑</a>
+  <a href="#analysis">实际数据分析与报告生成方法</a>
+  <a href="#procedure">执行流程与记录表</a>
+  <a href="#caveats">注意事项与已知局限</a>
+  <a href="#faq">常见问题</a>
+</nav>
+
+<h2 id="scheme">0. 测试方案总览</h2>
+<div class="card">
+  <dl class="kv">
+    <dt>被测对象</dt><dd>天线 A（普通）与天线 B（滤波/抗干扰增强），各接一台同型号北云 M21。</dd>
+    <dt>干扰几何</dt><dd>两天线相距 30 cm 固定于同一平面；干扰源置于中点，距各天线 15 cm。两天线、干扰源三者相对位置与姿态在整个测试中<b>固定不动</b>。</dd>
+    <dt>干扰源</dt><dd>Wi-Fi 路由器（2.4 GHz）、手机（4G 业务态）、对讲机（392/409 MHz，PTT 断续发射）。三者均为 GNSS L 频段（1561–1602 MHz）<b>带外</b>干扰，致伤机制以前端阻塞为主【N Interference Toolkit】；392 MHz 的 4 次谐波 1568 MHz 距 GPS L1 仅约 7 MHz，属近带耦合路径（射频常识推算【V】）。</dd>
+    <dt>测量原理</dt><dd>两台 M21 <b>同步</b>输出，同星座、同干扰环境、同历元对齐——消除你此前分时录制（相差 30 s–3 min）的星座漂移误差，可做逐历元逐星配对。这是本方案相比你上一版数据的最大改进。</dd>
+    <dt>每个场景时长</dt><dd>≥150 s：前 30–60 s 不施加干扰（基线段）→ 施加干扰 60–90 s（干扰段）→ 撤除干扰 30 s（恢复段，观察重捕）【V，工程惯例；ETSI 阻塞测试亦要求稳态测量】。</dd>
+    <dt>关键提醒</dt><dd>M21 <b>内置自适应抗干扰算法</b>（对常见干扰做高量化位数信号预处理与自适应干扰抑制）【HM M21/M21D 用户手册简介】，UG016 协议未提供关闭开关。两台 M21 同型号、算法作用相同，<b>对比仍然公平</b>，但测得的差异是“天线＋M21 算法”的系统级差异，不是天线单独的差异——结论表述时务必带上这个限定。</dd>
+  </dl>
+</div>
+
+<h2 id="logs">1. Log 字段与采集频率</h2>
+<p>下表按“对抗干扰测试的价值”排序。UG016 协议适用于北云全系列产品（协议封面说明），各消息页的推荐触发均为 <code>ONTIME 1</code>【P】；下表的频率列是本方案的工程建议【V】，已考虑数据量与串口带宽（见第 2 节核算）。</p>
+<div class="card">
+<table>
+  <tr><th style="width:44px">级别</th><th style="width:150px">Log（ASCII 命令）</th><th style="width:90px">建议频率</th><th>关键字段与用途</th><th style="width:150px">出处</th></tr>
+  <tr>
+    <td><span class="tag t-green">核心</span></td>
+    <td class="ascii">TRACKSTATA ONTIME 1</td>
+    <td class="num">1 Hz（研究瞬态可 5 Hz）</td>
+    <td>每<b>通道</b>一条记录（同一颗星每个频点一条）：<code>C/No</code>（载噪比 dB-Hz，Float）、<code>locktime</code>（连续跟踪秒数，无周跳——失锁归零的直接证据）、<code>ch-tr-status</code>（32 位跟踪状态字：PLL/FLL/搜索、相位锁定标志、系统、信号类型）、<code>psr res</code>（伪距残差）、<code>reject</code>（观测量状态）。本次测试的<b>主数据源</b>。</td>
+    <td>【P §4.2.26 P103–104；M §3.188 P862–863】</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-green">核心</span></td>
+    <td class="ascii">BESTPOSA ONTIME 1</td>
+    <td class="num">1 Hz</td>
+    <td><code>sol stat</code>（解算状态，表 4-1）、<code>pos type</code>（定位状态，表 4-2，干扰严重时沿 NARROW_INT→FLOAT→SINGLE→NONE 降级）、参与解算卫星数、位置标准差字段。定位层面的<b>最终结果指标</b>。</td>
+    <td>【P §4.2.1；M §3.14 P430】</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-green">核心</span></td>
+    <td class="ascii">GPGST ONTIME 1</td>
+    <td class="num">1 Hz</td>
+    <td>字段 3：用于导航计算的<b>伪距标准偏差 RMS</b>（m）；字段 7/8/9：纬/经/高度标准偏差（m）。JRC 抗干扰三大指标之二“伪距退化”的现成 NMEA 来源。</td>
+    <td>【P §4.1.7 P52；JRC 报告】</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-blue">推荐</span></td>
+    <td class="ascii">GPGSV ONTIME 1</td>
+    <td class="num">1 Hz（原 5 Hz 可保留，1 Hz 已够）</td>
+    <td>各系统可见星数与 SNR（整数 dB；OEM7 注明即 C/No，<b>null when not tracking</b>）。用于“可见星数/丢失星数”统计；<b>不作 SNR 主源</b>（1 dB 量化＋幸存者偏差，见第 3.4 节）。</td>
+    <td>【P §4.1.8 P52–53；M §3.53 P525–526】</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-blue">推荐</span></td>
+    <td class="ascii">rangecmpb ONTIME 1<br>（二进制）</td>
+    <td class="num">1 Hz</td>
+    <td>压缩原始观测（24 B/星）：C/N0（编码 20+n，范围 20–51 dB-Hz）、locktime、<b>伪距标准差（表 4-23，0.05–9.5 m 共 12 级）</b>、ADR 标准差。伪距标准差是 JRC 第二指标的直接测量；二进制体积小，与 TRACKSTAT 互补校验。</td>
+    <td>【P §4.6.4.6 P143–145；表 4-23 P148】</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-teal">可选</span></td>
+    <td class="ascii">INSPVAXA ONTIME 1</td>
+    <td class="num">1–10 Hz</td>
+    <td>组合导航状态（表 4-8 INS 解算状态）、扩展解算状态字（表 4-11/4-12/4-13）。用于观察干扰下 INS 滤波器的完好性反应（如 INS_SOLUTION_FREE=GNSS 被拒）。你现有数据是 100 Hz，抗干扰测试 1–10 Hz 足够。</td>
+    <td>【P §4.2.15；M Table 210】</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-teal">可选</span></td>
+    <td class="ascii">HEADINGA ONTIME 1</td>
+    <td class="num">1 Hz</td>
+    <td>仅当两台都是双天线定向版（M21D）且关心定向受扰时采集。</td>
+    <td>【P §4.2.7】</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-orange">验证性</span></td>
+    <td class="ascii">RXSTATUSA ONTIME 1<br>ITDETECTSTATUSA ONCHANGED</td>
+    <td class="num">各发一次，看有无输出</td>
+    <td><b>UG016 协议未收录这两条</b>（OEM7 专有）：RXSTATUS 状态字 bit15=Jammer Detected、AUX1 各 RF 频段 jammer 位；ITDETECTSTATUS 直接报告干扰中心频率/带宽/功率 dBm/功率谱密度。<b>若 M21 固件有输出，它们是最硬的直接判据</b>；若无输出或返回 UNKNOWN COMMAND，忽略即可，不影响本方案其余部分。</td>
+    <td>【M §3.153 P774–775；§3.70 P562–563】</td>
+  </tr>
+</table>
+</div>
+
+<h3>推荐采集命令（两台 M21 各发一遍，保证配置完全一致）</h3>
+<div class="cmd"><span class="cm"># 先清空旧配置，保证两台一致</span>
+UNLOGALL
+<span class="cm"># 核心三件套：通道级 + 定位级 + 伪距误差</span>
+LOG COM1 TRACKSTATA ONTIME 1
+LOG COM1 BESTPOSA  ONTIME 1
+LOG COM1 GPGST     ONTIME 1
+<span class="cm"># 推荐：可见星统计 + 原始观测（二进制压缩，带宽友好）</span>
+LOG COM1 GPGSV     ONTIME 1
+LOG COM1 RANGECMPB ONTIME 1
+<span class="cm"># 可选：组合导航状态观察</span>
+LOG COM1 INSPVAXA  ONTIME 1
+<span class="cm"># 验证性：OEM7 干扰检测字段（协议未收录，测一次看有无输出）</span>
+LOG COM1 RXSTATUSA ONTIME 1
+LOG COM1 ITDETECTSTATUSA ONCHANGED
+<span class="cm"># 存配置，两台 M21 用同一脚本下发</span>
+SAVECONFIG</div>
+<p class="sub">说明：COM1 换成你实际使用的串口/网口；所有消息都带 FINESTEERING 周/周内秒时间戳（NMEA 的 GPGSV/GPGST 除外，它们与同一秒的自定义消息按时间对齐即可），两台设备的同一历元用时间戳配对。</p>
+
+<h2 id="bandwidth">2. 串口带宽核算（为什么会这样配频率）</h2>
+<div class="card">
+  <p>TRACKSTAT 是本方案数据量最大的消息：M21 全系统全频点共 1507 个硬件通道【HM；北云官网产品页】，实际在跟踪的通道每帧数十至上百条记录，每条约 40 字节字段（ASCII 文本更长）。按你现有数据每历元约 95–108 通道估算：</p>
+  <table>
+    <tr><th>消息</th><th>单帧大小估算（ASCII）</th><th>1 Hz 数据率</th><th>5 Hz 数据率</th></tr>
+    <tr><td class="ascii">TRACKSTATA</td><td>≈100 通道 × 50 B ≈ 5 KB</td><td>≈5 KB/s（50 kbps）</td><td>≈25 KB/s（250 kbps）</td></tr>
+    <tr><td class="ascii">BESTPOSA / GPGST / GPGSV</td><td>合计 ≈1–2 KB</td><td>≈2 KB/s</td><td>≈10 KB/s</td></tr>
+    <tr><td class="ascii">RANGECMPB（二进制）</td><td>≈24 B × 星数 + 头 ≈ 1.5 KB</td><td>≈1.5 KB/s</td><td>≈7.5 KB/s</td></tr>
+    <tr><td class="ascii">INSPVAXA</td><td>≈0.3 KB</td><td>≈0.3 KB/s</td><td>≈1.5 KB/s</td></tr>
+    <tr><td><b>合计</b></td><td>—</td><td><b>≈9 KB/s（90 kbps）</b></td><td><b>≈44 KB/s（440 kbps）</b></td></tr>
+  </table>
+  <p><b>结论：</b>1 Hz 全套配置下，115200 bps 串口已接近上限、建议用 <b>460800 bps 或网口（ICOM/RMII）</b>；若 TRACKSTAT 提到 5 Hz，则<b>必须</b> 460800 bps 以上或走网口。两台 M21 的串口/网口参数也要设成一致【V，工程估算】。</p>
+</div>
+
+<h2 id="fields">3. 字段含义详解（本方案关注的字段）</h2>
+
+<h3>3.1 TRACKSTAT —— 主数据源（北云 §4.2.26 = OEM7 §3.188，逐字一致）</h3>
+<div class="card">
+<table>
+  <tr><th style="width:130px">字段</th><th style="width:190px">官方含义</th><th>抗干扰测试中的读法</th></tr>
+  <tr><td class="ascii">C/No</td><td>载噪比，dB-Hz，Float【M P863】</td><td><b>核心物理量</b>。干扰使有效噪声基底抬升、信号被压制，C/No 下降。ETSI 判据即 ΔC/N0 ≤ 1 dB【ETSI】。逐星逐历元记录。</td></tr>
+  <tr><td class="ascii">locktime</td><td>连续跟踪秒数（无周跳）【M P863】</td><td><b>失锁证据</b>。干扰打垮跟踪环路时归零重计。统计：干扰段内 locktime 归零次数、归零通道占比、归零后恢复到 ≥10 s 所需时间（重捕能力的体现）。GSV 完全没有这个量。</td></tr>
+  <tr><td class="ascii">ch-tr-status<br>（32 位状态字）</td><td>bits 0–4 跟踪状态：1=搜索，4=相位锁定环（PLL），7=频率锁定环（FLL）等；bit10 相位锁定标志；bit12 伪码锁定标志；bits 13–15 相关器类型；bits 16–18 卫星系统；bits 21–25 信号类型【P 注2 P145–146；M Table 136 P693】</td><td><b>环路健康度画像</b>。正常稳态：绝大多数通道在 PLL(4) 且相位锁定。干扰下会看到：PLL→FLL（精度降级的过渡态）、PLL→搜索（失锁重捕中）、通道转空闲。统计各状态通道占比的时间曲线，是比 C/No 更敏感的早期预警。</td></tr>
+  <tr><td class="ascii">psr res</td><td>伪距滤波残差（m）【M P863】</td><td>残差变大 = 观测量与滤波器预期不符（干扰致畸或多径恶化），是看“干扰是否已影响观测量质量”的旁证。</td></tr>
+  <tr><td class="ascii">reject</td><td>观测量状态（Table 79）【M P863】</td><td>观测量被标记为 GOOD/OBSL2 等之外的异常时计数，反映滤波器丢弃观测的比例。</td></tr>
+</table>
+</div>
+
+<h3>3.2 BESTPOS —— 定位级结果（北云 §4.2.1 = OEM7 §3.14）</h3>
+<div class="card">
+<table>
+  <tr><th style="width:130px">字段</th><th>官方含义</th><th>抗干扰测试中的读法</th></tr>
+  <tr><td class="ascii">sol stat / pos type</td><td>解算状态（表 4-1）/ 定位状态（表 4-2）</td><td>定位状态的<b>降级轨迹</b>是最直观的结论：NARROW_INT(50) → 浮点(32/34) → SINGLE(16) → NONE(0)。记录每台 M21 停留在各等级的时间占比与首次降级时刻。</td></tr>
+  <tr><td class="ascii"># sats / # satsln</td><td>跟踪星数 / 参与解算星数</td><td>干扰导致可用星减少的直接计数。</td></tr>
+  <tr><td class="ascii">位置标准差</td><td>纬/经/高标准差字段</td><td>定位置信度退化的量化体现，与 GST 互证。</td></tr>
+</table>
+</div>
+
+<h3>3.3 GPGST —— 伪距与定位误差（北云 §4.1.7）</h3>
+<div class="card">
+  <p>字段 3（伪距标准偏差 RMS，m）是 <b>JRC 抗干扰评估三大指标之二“伪距退化”</b>的现成来源【JRC】；字段 7/8/9（纬/经/高标准偏差）给出定位域的退化。干扰下 RMS 上升的倍数比绝对值更有可比性（除以基线段 RMS 中位数归一化）。</p>
+</div>
+
+<h3>3.4 GPGSV —— 仅作“星数”统计，不作 SNR 主源</h3>
+<div class="card">
+  <p>三个结构性原因（均有文档依据）：① OEM7 注明 SNR 字段 <b>null when not tracking</b>——干扰下弱星先消失，剩余强星的平均 SNR 会出现“幸存者偏差”【M §3.53 P526】；② 整数 1 dB 量化，而 ETSI 判据临界值恰为 1 dB，量化噪声淹没真实变化；③ 每条消息最多 4 星、多系统分条，同一历元的星座快照被切碎。因此本方案中 GSV 只用于：<b>可见星数/历元、丢失星数（基线可见而干扰段消失）</b>。C/No 一律以 TRACKSTAT 为准。</p>
+</div>
+
+<h3>3.5 RANGECMPB —— 伪距标准差的通道级真值（北云 §4.6.4.6）</h3>
+<div class="card">
+  <p>24 字节/星的压缩二进制：C/N0（20+n 编码，20–51 dB-Hz）、locktime、<b>伪距标准差（表 4-23：0.050 / 0.075 / 0.113 / 0.169 / 0.253 / 0.380 / 0.570 / 0.854 / 1.281 / 2.375 / 4.750 / 9.500 m 共 12 级编码）</b>、ADR 标准差【P P144–145, P148】。它把 JRC“伪距退化”指标细化到每颗星的每个频点，且与 TRACKSTAT 的 C/No 互相校验（两源 C/No 趋势应一致，不一致说明解析有误）。</p>
+</div>
+
+<h3>3.6 INSPVAXA —— 组合导航完好性（可选观察项）</h3>
+<div class="card">
+  <p>干扰严重时，M21 的深耦合组合引擎会拒绝可疑 GNSS 更新：INS 状态字段（表 4-8）出现 INS_SOLUTION_FREE(6)（GNSS 解疑似有误被拒）或 INS_HIGH_VARIANCE(2)（不确定性超门限，解仍有效）【M Table 210】。这两个状态是“干扰已穿透到组合滤波层”的标志，可作为辅助判据，但不参与天线胜负的主判定（两台 M21 的 INS 行为还受 IMU 影响）。</p>
+</div>
+
+<h2 id="judge">4. 天线质量判断逻辑</h2>
+<p>判断分两条互补的路径：<b>路径一</b>（双天线同步对比）回答“同一干扰下谁更强”；<b>路径二</b>（单天线施加前/后对比）回答“每根天线自身退化多少”。两条路径用同一套指标，最后汇入一张判定矩阵。</p>
+
+<h3>4.1 指标体系总表</h3>
+<div class="card">
+<table>
+  <tr><th style="width:36px">层</th><th style="width:190px">指标</th><th style="width:170px">来源字段</th><th>判定方向</th><th style="width:170px">判据/出处</th></tr>
+  <tr><td rowspan="4" style="vertical-align:middle">通道层<br>（主判据）</td><td>ΔC/N0 退化量（每星每频点）</td><td class="ascii">TRACKSTAT C/No</td><td>退化越小越好；≤1 dB 为合格线</td><td>ETSI EN 303 413 Eq.4-1【ETSI】；USAF IPC【gps.gov】</td></tr>
+  <tr><td>失锁事件</td><td class="ascii">TRACKSTAT locktime</td><td>归零次数与归零通道占比越少越好</td><td>工程惯例【V】</td></tr>
+  <tr><td>环路状态分布</td><td class="ascii">TRACKSTAT ch-tr-status</td><td>PLL 锁定占比越高越好；FLL/搜索占比升高即退化</td><td>【M Table 136】</td></tr>
+  <tr><td>伪距标准差等级</td><td class="ascii">RANGECMPB（表 4-23）</td><td>等级上移越少越好</td><td>JRC 伪距退化指标【JRC】</td></tr>
+  <tr><td>星座层</td><td>可见/可用/丢失星数</td><td class="ascii">GPGSV + TRACKSTAT</td><td>丢失越少越好（分系统分频点统计）</td><td>【M §3.53；P §4.1.8】</td></tr>
+  <tr><td rowspan="2" style="vertical-align:middle">解算层<br>（最终结果）</td><td>定位状态降级</td><td class="ascii">BESTPOS pos type / sol stat</td><td>保持高等级（RTK 固定）时间越长越好</td><td>表 4-1/4-2【P；M】</td></tr>
+  <tr><td>伪距 RMS / 位置标准差</td><td class="ascii">GPGST / BESTPOS</td><td>相对基线的上升倍数越小越好</td><td>JRC【JRC】</td></tr>
+</table>
+</div>
+
+<h3>4.2 路径一：双天线同步对比（主判定）</h3>
+<div class="card">
+  <p><b>第 1 步 · 基线校准（干扰前 30–60 s 干净段）。</b>两根天线即使无干扰也存在固定增益差（天线增益、馈线损耗、LNA 噪声系数不同）。对每颗星 s 的每个频点 f，计算静态偏移：</p>
+  <p style="text-align:center"><code>δ<sub>sys</sub> = median<sub>t∈基线段, s∈sys</sub> [ C/No<sub>A</sub>(t,s,f) − C/No<sub>B</sub>(t,s,f) ]</code>（按卫星系统分组；某系统共同星不足 3 颗时退回全星座中位数）</p>
+  <p>两台 M21 同步输出，用 FINESTEERING 时间戳逐历元对齐（配对容差 0.1 s），同历元同星同频点两两配对——<b>这是你上一版分时数据做不到、本方案独有的优势</b>。</p>
+  <p><b>第 2 步 · 干扰段校正对比。</b>对干扰段每对样本计算校正差值：</p>
+  <p style="text-align:center"><code>d(t,s,f) = C/No<sub>A</sub>(t,s,f) − C/No<sub>B</sub>(t,s,f) − δ<sub>sys</sub></code></p>
+  <p>d &gt; 0 表示扣除固有差异后 A 更强。以全部配对样本的<b>中位数</b>为主判据（抗野值），±0.5 dB 内设为持平带（比你原方案的 ±0.5 一致，与 ETSI 1 dB 判据相容且更严格）；辅以逐星胜负计数与 Wilcoxon 符号秩检验（沿用你 antenna_strength_comparison.py 的方法，样本量因同步配对而大幅增厚）。</p>
+  <p><b>第 3 步 · 分维度展开。</b>按<b>卫星系统</b>（GPS/GLO/GAL/BDS/QZS）与<b>频点</b>（ch-tr-status bits 21–25 信号类型）分别统计 d 的中位数。天线滤波器的频率选择性会在此显形：增强型天线应当对干扰源邻近频段（如 4G 谐波逼近的 L1 高端）表现出更大优势，而不是全频段均匀受益——<b>“优势集中在哪个频段”本身就是滤波器是否对症的证据</b>。</p>
+  <p><b>第 4 步 · 失锁与环路对比（辅证）。</b>干扰段内统计每台：locktime 归零通道数、归零次数、PLL 锁定占比均值、首次降级时刻。主判据持平时，这些辅证决定“谁更稳健”。</p>
+</div>
+
+<h3>4.3 路径二：单天线施加前/后自身评估</h3>
+<div class="card">
+  <p>对每根天线各自计算（与其自身基线段对比）：</p>
+  <table>
+    <tr><th style="width:210px">量</th><th style="width:300px">算法</th><th>合格/参考线</th></tr>
+    <tr><td>平均 C/N0 退化 Δ</td><td>median[ C/No<sub>干扰段</sub>(s,f) − C/No<sub>基线段</sub>(s,f) ]（逐星逐频点配对后取中位数，附 25%/75% 分位）</td><td>≥ −1 dB 合格（ETSI）；−1～−3 dB 明显退化；&lt; −3 dB 严重</td></tr>
+    <tr><td>丢失星数</td><td>基线段可见而干扰段 C/No 缺失的 (系统,星,频点) 数</td><td>越少越好；丢失集中在哪个系统/频点要单列</td></tr>
+    <tr><td>失锁率</td><td>干扰段内 locktime 归零的通道数 ÷ 基线段跟踪通道数</td><td>0% 最佳；与另一台横向比</td></tr>
+    <tr><td>PLL 保持率</td><td>干扰段 PLL 锁定通道占比 ÷ 基线段同值</td><td>越接近 100% 越好</td></tr>
+    <tr><td>伪距 RMS 倍数</td><td>GPGST 字段 3：干扰段中位数 ÷ 基线段中位数</td><td>≈1 无退化；&gt;2 明显退化【V】</td></tr>
+    <tr><td>定位状态轨迹</td><td>BESTPOS pos type 各等级时间占比、首次降级时刻、恢复时刻</td><td>不降级最佳；恢复段能否回到原等级（重捕能力）</td></tr>
+  </table>
+  <p class="sub">注意：单天线评估受干扰源功率波动影响（手机功控、路由器业务有无、对讲机 PTT 断续），绝对退化值只作参考；<b>天线的胜负判定以路径一（同步对比）为准</b>，路径二用于解释“为什么赢/输”和衡量退化的绝对量级。</p>
+</div>
+
+<h3>4.4 判定矩阵（汇总结论用）</h3>
+<div class="card">
+<table>
+  <tr><th style="width:200px">判定项</th><th>数据来源</th><th style="width:120px">权重</th><th>胜负规则</th></tr>
+  <tr><td>① 校正 ΔC/N0 中位数（主判据）</td><td>路径一第 2 步</td><td><b>主</b></td><td>中位数 &gt; +0.5 dB：A 胜；&lt; −0.5 dB：B 胜；带内持平</td></tr>
+  <tr><td>② 失锁事件更少</td><td>locktime 归零统计</td><td>辅</td><td>归零通道少者胜（差 ≥2 个通道才判）</td></tr>
+  <tr><td>③ PLL 保持率更高</td><td>跟踪状态字</td><td>辅</td><td>占比差 ≥2% 才判</td></tr>
+  <tr><td>④ 丢失星/频点更少</td><td>GSV+TRACKSTAT</td><td>辅</td><td>少者胜</td></tr>
+  <tr><td>⑤ 定位等级保持更好</td><td>BESTPOS pos type</td><td>辅</td><td>高等级时间占比高者胜</td></tr>
+  <tr><td>⑥ 伪距 RMS 倍数更小</td><td>GPGST</td><td>辅</td><td>小者胜（差 ≥10% 才判）</td></tr>
+</table>
+  <p><b>结论表述模板：</b>“在【干扰源】置于两天线中点（各 15 cm）的条件下，扣除基线静态偏移后，天线 X 的 C/N0 校正优势中位数为 +a.ab dB（N=n 对样本，Wilcoxon p=…），失锁/PLL 保持/丢失星/定位保持等辅证 [一致/不一致]；综合判定天线 X 抗干扰能力更强。注意：本结论为‘天线＋M21 内置抗干扰算法’的系统级结果（UG016 未提供算法开关）。”</p>
+</div>
+
+<h2 id="analysis">5. 实际数据分析与报告生成方法（已落地脚本）</h2>
+<p>本节记录对 0721 真实数据实际采用的解析、分段、统计与报告方法，与 <code>scripts/analyze_0721.py</code> 保持一致，避免口头方案与落地脚本脱节。</p>
+
+<div class="card">
+<h3>5.1 数据预处理与对齐</h3>
+<dl class="kv">
+  <dt>主数据源</dt><dd>COM3 ASCII：TRACKSTATA、BESTPOSA、GPGST、GPGSV。</dd>
+  <dt>弃用的数据</dt><dd>COM4 二进制：北天BT-T076 为 RANGECMP（ID 140），北天BT-T617 为自定义 0xA521，两根天线 COM4 格式不一致，<b>不参与横向对比</b>。</dd>
+  <dt>时间对齐</dt><dd>以 TRACKSTATA 的 FINESTEERING 周内秒（sow）为键，两台 M21 按同一 sow 逐历元配对。</dd>
+  <dt>天线命名</dt><dd>内部标识 111 对应北天BT-T076；222 对应北天BT-T617。</dd>
+</dl>
+</div>
+
+<div class="card">
+<h3>5.2 片段划分规则</h3>
+<p>测试文件为连续记录，按用户提供的 10 个时间段顺序切分。第 10 段（8.75 s，干扰后拆机前）因时长过短、操作扰动多，作为噪声剔除。剩余 9 段中，每段取<b>中间 10 秒</b>作为稳态分析窗口，避开干扰切换瞬态。</p>
+<table>
+  <tr><th>片段</th><th>原始时长</th><th>用途</th></tr>
+  <tr><td>无干扰 #1</td><td>36.79 s</td><td>基线</td></tr>
+  <tr><td>409 MHz 干扰</td><td>34.81 s</td><td>干扰评估</td></tr>
+  <tr><td>无干扰 #2</td><td>35.08 s</td><td>基线</td></tr>
+  <tr><td>392 MHz 干扰</td><td>35.81 s</td><td>干扰评估</td></tr>
+  <tr><td>无干扰 #3</td><td>35.50 s</td><td>基线</td></tr>
+  <tr><td>4G/5G 干扰</td><td>34.76 s</td><td>干扰评估</td></tr>
+  <tr><td>无干扰 #4</td><td>38.47 s</td><td>基线</td></tr>
+  <tr><td>Wi-Fi 干扰</td><td>36.70 s</td><td>干扰评估</td></tr>
+  <tr><td>无干扰 #5</td><td>37.96 s</td><td>基线</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>5.3 核心指标定义</h3>
+<table>
+  <tr><th>指标</th><th>来源字段</th><th>说明</th></tr>
+  <tr><td>C/N0</td><td class="ascii">TRACKSTATA C/No</td><td>载噪比 dB-Hz，统一用 C/No 而非 GSV SNR。</td></tr>
+  <tr><td>可见星数</td><td class="ascii">GPGSV in_view</td><td>“能看到多少颗星”，与跟踪/解算星数区分。</td></tr>
+  <tr><td>跟踪星数</td><td class="ascii">TRACKSTATA 每历元唯一 svid 计数</td><td>“实际在跟踪多少颗星”。</td></tr>
+  <tr><td>参与解算星数</td><td class="ascii">BESTPOS # satsln</td><td>“实际用于定位解算多少颗星”。</td></tr>
+  <tr><td>PLL 锁定比</td><td class="ascii">ch-tr-status</td><td>状态字中 state=4、相位锁定与伪码锁定均置位的通道占比。</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>5.4 对比层级：逐星 → 按系统 → 全局</h3>
+<p>本方案明确以<b>单颗卫星</b>作为最小对比单元，而不是直接拿两颗天线的“星座中位数”做一对一比较。原因：</p>
+<ul>
+  <li>不同卫星的 C/No 基线差异很大（GPS/BDS/GLONASS/Galileo/QZSS 的平均 C/No 不在同一水平），星座中位数会把这些差异混在一起，掩盖单颗卫星的真实退化；</li>
+  <li>干扰往往具有频率/方向选择性，只会打击某几颗卫星，逐星对比才能定位“哪些卫星被干扰打垮”；</li>
+  <li>两颗天线对同一颗卫星的响应是最干净的配对：同一星座、同一传播路径、同一历元，只剩天线差异。</li>
+</ul>
+<p><b>对比流程：</b></p>
+<ol>
+  <li><b>逐星</b>：对每颗共同卫星，分别计算 C/N0 中位数、差值、Pearson r、丢失与否；</li>
+  <li><b>按系统</b>：把同一系统内所有卫星的逐星结果汇总，取中位数或 Fisher-z 平均，得到系统级结论；</li>
+  <li><b>全局</b>：再把各系统结果汇总，得到整体结论。全局结论只用于“大致印象”，最终判定优先看系统级与逐星级。</li>
+</ol>
+</div>
+
+<div class="card">
+<h3>5.5 相关性分析方法（为何用 Pearson + Fisher-z）</h3>
+<p>对两颗天线均观测到的同一卫星，按同一 sow 配对，<b>先逐星计算 Pearson 相关系数 r</b>：</p>
+<p style="text-align:center"><code>r = cov(C/No<sub>BT-T076</sub>, C/No<sub>BT-T617</sub>) / (σ<sub>BT-T076</sub> σ<sub>BT-T617</sub>)</code></p>
+<p>然后跨卫星合并时使用 <b>Fisher z-transform 平均</b>，而不是简单算术平均：</p>
+<p style="text-align:center"><code>z = 0.5 · ln[(1+r)/(1−r)]，z̄ = mean(z<sub>i</sub>)，r̄ = (e<sup>2z̄</sup>−1)/(e<sup>2z̄</sup>+1)</code></p>
+<p>理由：Pearson r 不是线性可加量（例如 r=0.9 与 r=0.3 不能直接平均），Fisher z 变换是统计学合并多个相关系数的标准方法。同时给出：</p>
+<ul>
+  <li><b>总体样本 r</b>：所有配对样本一起计算，反映全局线性关系；</li>
+  <li><b>Fisher-z 平均 r</b>：每颗星一票，跨卫星公平合并；</li>
+  <li><b>逐星 r 中位数与分布</b>：按强（|r|≥0.7）、中（0.4≤|r|&lt;0.7）、弱（|r|&lt;0.4）统计卫星数。</li>
+</ul>
+<p>阈值采用心理学/信号处理领域通行标准：0.7 强、0.4 中等。</p>
+</div>
+
+<div class="card">
+<h3>5.6 显著性检验（Wilcoxon 符号秩检验）</h3>
+<p>对每个片段，取两颗天线共同卫星的 C/N0 中位数差值：</p>
+<p style="text-align:center"><code>d<sub>i</sub> = C/No<sub>BT-T076</sub>(svid<sub>i</sub>) − C/No<sub>BT-T617</sub>(svid<sub>i</sub>)</code></p>
+<p>剔除零差值后做 Wilcoxon signed-rank test（正态近似、含结校正），双尾 p &lt; 0.05 认为两颗天线在该片段存在系统性差异。</p>
+</div>
+
+<div class="card">
+<h3>5.7 单天线干扰退化评估</h3>
+<p>对每个真实干扰段，以其前一无干扰段为基线，计算共同卫星的 C/N0 中位数退化：</p>
+<p style="text-align:center"><code>ΔC/N0 = median[ C/No<sub>干扰段</sub> − C/No<sub>基线段</sub> ]</code></p>
+<p>参考 ETSI EN 303 413 的行业经验线：ΔC/N0 ≥ −1 dB 视为通过；−1～−3 dB 为明显退化；&lt; −3 dB 为严重退化。同时统计相对基线的丢失卫星数与 PLL 锁定变化。</p>
+</div>
+
+<div class="card">
+<h3>5.8 报告输出</h3>
+<p>脚本生成三份 HTML 报告：</p>
+<ul>
+  <li><code>antenna_BT-T076_0721_report.html</code>：单天线统计与图表；</li>
+  <li><code>antenna_BT-T617_0721_report.html</code>：单天线统计与图表；</li>
+  <li><code>antenna_BT-T076_vs_BT-T617_0721_report.html</code>：同步对比、逐星/按系统统计、相关性、显著性检验、ETSI 退化评估与综合结论。</li>
+</ul>
+</div>
+
+<h2 id="procedure">6. 执行流程与记录表</h2>
+<div class="card">
+  <h3>6.1 测试前准备</h3>
+  <p>
+    ① 两台 M21 固件版本确认一致（<code>LOG VERSIONA ONCE</code>），同一配置脚本下发第 1 节命令；<br>
+    ② 天线 A/B 标记清晰，馈线等长同型（长度差引入的损耗差会直接进入静态偏移 δ——δ 可校正，但等长更干净）；<br>
+    ③ 两天线间距 30 cm 刚性固定，置于开阔天空、远离多径源；干扰源位置在中点做标记，每次放置姿态一致；<br>
+    ④ 串口/网口带宽按第 2 节核算设置（建议 460800 bps 或 ICOM 网口）；<br>
+    ⑤ 测试场地先录 60 s 无干扰环境底噪，确认两天线基线段 C/No 分布稳定后再开始。
+  </p>
+  <h3>6.2 单场景流程（每个干扰源执行一遍）</h3>
+  <table>
+    <tr><th style="width:110px">阶段</th><th style="width:90px">时长</th><th>操作与记录</th></tr>
+    <tr><td>基线段</td><td class="num">30–60 s</td><td>干扰源关机/远离（≥3 m）。两台 M21 同步记录，计算 δ<sub>sys</sub> 的样本段。</td></tr>
+    <tr><td>干扰段</td><td class="num">60–90 s</td><td>干扰源置于中点并开启（路由器保持业务、手机保持通话/数据、对讲机按住 PTT）。记录干扰源型号/档位/姿态。对讲机可约定“按 20 s 松 10 s”循环，顺便观察失锁-重捕动态。</td></tr>
+    <tr><td>恢复段</td><td class="num">30 s</td><td>撤除干扰源。观察 pos type 恢复时刻与 locktime 重建——重捕能力对比。</td></tr>
+    <tr><td>交换复测</td><td class="num">同上一遍</td><td><b>A/B 两天线连同接收机物理位置互换</b>，重复上述三段。用于消除 15 cm 几何与干扰源方向图不对称带来的系统误差（计量比对惯例【V】）。两轮结果方向一致才下结论。</td></tr>
+  </table>
+  <h3>6.3 场景矩阵</h3>
+  <table>
+    <tr><th>场景</th><th>干扰源</th><th>预期耦合路径</th><th>重点观察</th></tr>
+    <tr><td>S0</td><td>无（环境底噪）</td><td>—</td><td>两天线基线一致性、δ 稳定性</td></tr>
+    <tr><td>S1</td><td>Wi-Fi 路由器（2.4 GHz）</td><td>带外阻塞（距 L1 约 825 MHz）</td><td>全星座 C/No 是否均匀普降（阻塞指纹）</td></tr>
+    <tr><td>S2</td><td>手机 4G（业务态）</td><td>带外阻塞；B3 上行 1710–1785 MHz 距 L1 约 90–135 MHz，相对最近</td><td>L1/E1/B1 频段是否比 L2/L5 退化更大（频率选择性）</td></tr>
+    <tr><td>S3</td><td>对讲机 392 MHz（PTT）</td><td>带外阻塞＋4 次谐波 1568 MHz 近带（距 L1 约 7 MHz）【V 推算】</td><td>四种干扰中理论威胁最大；观察是否出现选择性打击与失锁</td></tr>
+    <tr><td>S4</td><td>对讲机 409 MHz（PTT）</td><td>带外阻塞为主</td><td>与 S3 对比谐波路径的有无</td></tr>
+  </table>
+  <p class="sub">耦合路径分析为射频常识推算【V】，用于设计观察重点；判定结论只依据测量数据。</p>
+</div>
+
+<h2 id="caveats">7. 注意事项与已知局限（如实说明）</h2>
+<div class="warn">
+  <p><b>① M21 内置自适应抗干扰算法不可关闭。</b>M21/M21D 用户手册明确其 GNSS 引擎“对常见干扰信号（车载防跟踪设备、雷达、机场信号塔等）进行高量化位数的信号预处理与自适应干扰抑制”【HM】。UG016 协议无此算法的开关或状态输出。因此：两台同型号对比<b>公平</b>，但结论是“天线＋算法”系统级；若内置算法很强，可能压平两天线的差异（此时差异小≠天线无差别，而是算法兜底）。若想分离天线单独贡献，需换用无抗干扰算法的同平台接收机复测。</p>
+  <p><b>② 干扰源功率不可控。</b>手机/路由器发射功率随业务动态变化，对讲机为断续发射。缓解：固定型号/姿态/业务状态、记录 PTT 时段、每场景复测 ≥2 轮看重复性；若要定量“退化-功率”曲线（ETSI 式阻塞扫描），需改用信号发生器＋功放。</p>
+  <p><b>③ 15 cm 近场几何。</b>15 cm 处于多数干扰源天线的近场区，场强空间梯度大、方向图不规则，两天线实际受扰功率可能不同。缓解：干扰源严格居中并标记姿态＋第 5.2 节的交换复测。</p>
+  <p><b>④ RXSTATUS / ITDETECTSTATUS 未经证实。</b>这两条 OEM7 干扰检测日志在 UG016 协议中无收录，M21 固件是否支持未知。第 1 节命令里已包含验证性输出请求；若无输出，方案不依赖它们。</p>
+  <p><b>⑤ 两台 M21 的时钟同步。</b>逐历元配对依赖 FINESTEERING 时间戳对齐（容差 0.1 s）。两台设备各自独立定位时，时间戳均为 GPS 系统时，天然对齐；若一台失锁，其时间戳精度下降，配对程序应按“时间戳最近”匹配并丢弃无法配对的历元。</p>
+</div>
+
+<h2 id="faq">8. 常见问题（FAQ）</h2>
+<div class="card">
+  <h3>Q1：为什么不直接用你原来那套 GSV SNR 分析管线？</h3>
+  <p>管线思路（逐星配对、基线校正、中位数、Wilcoxon）全部保留并升级：数据源从 GSV 的整数 SNR 换成 TRACKSTAT 的 Float C/No（分辨率高一个量级，且带 locktime/跟踪状态）；配对从“每星中位数”升级为“同历元逐对”（同步采集才可能）。GSV 退居“可见/丢失星数”统计。</p>
+
+  <h3>Q2：TRACKSTAT 和 RANGECMPB 都有 C/N0，会重复吗？</h3>
+  <p>字段同源但编码不同（TRACKSTAT 为 Float dB-Hz；RANGECMPB 为 20+n 的 5 bit 编码，范围 20–51 dB-Hz【P P145】）。用途不同：TRACKSTAT 做主源（精度高、含状态字），RANGECMPB 取其独有的<b>伪距标准差（表 4-23）与 ADR 标准差</b>，并顺带用它的 C/N0 做交叉校验——两源趋势不一致时优先怀疑解析程序。</p>
+
+  <h3>Q3：采集频率为什么核心只给 1 Hz？5 Hz 不是更细吗？</h3>
+  <p>抗干扰对比看的是秒级以上的稳态退化与失锁事件统计，1 Hz 已能覆盖（失锁-重捕过程通常 ≥ 数秒）。5 Hz 的价值在研究瞬态细节，代价是 TRACKSTAT 数据量 ×5（见第 2 节带宽核算）。折衷：正式判定用 1 Hz；若想观察对讲机 PTT 启停瞬间的环路动态，单独给 S3/S4 场景开 TRACKSTAT 5 Hz。</p>
+
+  <h3>Q4：判定出现“主判据说 A 强、辅证说 B 强”怎么办？</h3>
+  <p>以主判据（校正 ΔC/N0 中位数）为准，辅证用于解释。常见成因：A 天线增益更高但滤波一般（C/No 高却易失锁）——此时应分开报告“信号保持能力 A 强、环路稳健性 B 强”，而不是强行合并输赢；这也恰好说明增强设计补的是哪一块。</p>
+
+  <h3>Q5：结果要到什么程度才算“增强设计有效”？</h3>
+  <p>建议的工程口径【V】：至少两个干扰场景下，校正 ΔC/N0 中位数优势 ≥ 1 dB（达到 ETSI 判据同量级），且辅证多数一致、交换复测方向不变，方可下“增强有效”的结论；优势在 0.5–1 dB 之间表述为“有改善趋势”；&lt; 0.5 dB 为“未观察到显著差异”。</p>
+</div>
+
+<footer>
+  <p><b>参考文档（按优先级排序）：</b></p>
+  <p>
+    【P】《UG016 数据通信接口协议》（北云科技）：§4.2.26 TRACKSTAT（P103–104）及跟踪状态字注 2（P145–146）、§4.2.1 BESTPOS、§4.1.7 GST（P52）、§4.1.8 GSV（P52–53）、§4.6.4.6 rangecmpb（P143–145）、表 4-23 伪距标准差（P148）、表 4-1/4-2/4-8。<br>
+    【M】《OEM7 Commands and Logs Reference Manual v11》（NovAtel）：§3.188 TRACKSTAT（P862–863）、Table 136 Channel Tracking Status（P693）、§3.53 GPGSV（P525–526，SNR 即 C/No、null when not tracking）、§3.14 BESTPOS（P430）、§3.153 RXSTATUS（P774–775，Table 171 jammer 位）、§3.70 ITDETECTSTATUS（P562–563）。<br>
+    【N】NovAtel 官方在线文档：<a href="https://docs.novatel.com/oem7/Content/Operation/Interference_Toolkit.htm">Interference Toolkit</a>（带外干扰由 Statistical Analysis Detection 检测、HDR 模式优化 AGC 对抗宽带/带外干扰）。<br>
+    【ETSI】<a href="https://www.etsi.org/deliver/etsi_en/303400_303499/303413/01.02.01_60/en_303413v010201p.pdf">ETSI EN 303 413</a>：接收机阻塞测试，ΔC/N0 ≤ 1 dB（Equation 4-1）。<br>
+    【JRC】<a href="https://amsat-uk.org/wp-content/uploads/2019/05/2015-ec-jrc_compatibility-between-amateur-and-galileo.pdf">EC JRC《Compatibility between amateur and Galileo》</a>：抗干扰评估三大指标（C/N0 退化、伪距退化、误码率）。<br>
+    【gps.gov】<a href="https://www.gps.gov/governance/advisory/meetings/2018-12/buesnel.pdf">Measurement of GNSS Receiver parameters</a>：1 dB CNR 退化 IPC 准则出处（ETSI/USAF）。<br>
+    【HM】《M21 高精度导航模组用户手册》（北云/阿奇米德版 V1.06）与《M21D 用户手册》（北云官网）：Alice SoC、1507 通道、全系统全频点、内置自适应抗干扰算法（高量化位数信号预处理与自适应干扰抑制）、跟踪灵敏度 -154 dBm（公司手册共性指标）。<br>
+    【V】工程惯例（交换复测、场景时长、胜负门限、耦合路径推算），均已单独标注，非官方条文。
+  </p>
+  <p>编写原则：所有 Log 字段定义照录 UG016/OEM7 原文；判断逻辑中的官方判据（ETSI 1 dB、JRC 指标）均给出处链接；未经验证的内容（RXSTATUS/ITDETECTSTATUS 在 M21 上的可用性）明确标注“待实测确认”，不做假设。</p>
+</footer>
+
+</div>
+</body>
+</html>

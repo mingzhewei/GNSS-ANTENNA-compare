@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>表 4-2 定位状态描述说明 · 全方位解读</title>
+<style>
+  :root{
+    --c-none:#9aa0a6;   /* 无解/预留 */
+    --c-blue:#4a90d9;   /* 伪距类 */
+    --c-orange:#e8963c; /* 浮点类 */
+    --c-green:#43a567;  /* 固定类 */
+    --c-purple:#8e6fc0; /* INS组合 */
+    --c-teal:#3aa6a6;   /* PPP */
+    --c-red:#d9634f;    /* UAL/降级 */
+    --ink:#1f2329; --sub:#5f6368; --line:#e5e7eb; --bg:#f5f6f8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+       font-size:14px;line-height:1.75}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 60px}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:28px 0 20px;margin-bottom:8px}
+  header .wrap{padding-bottom:0}
+  h1{font-size:24px;margin:0 0 6px}
+  h2{font-size:18px;margin:34px 0 12px;padding-left:10px;border-left:4px solid var(--c-blue)}
+  h3{font-size:15px;margin:18px 0 8px}
+  p{margin:8px 0}
+  code{background:#eef1f4;padding:1px 6px;border-radius:4px;font-size:12.5px;
+       font-family:"SF Mono",Menlo,Consolas,monospace}
+  .sub{color:var(--sub);font-size:13px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:14px 0}
+  .note{background:#fff8e6;border:1px solid #f0d88a;border-radius:10px;padding:14px 18px;margin:14px 0}
+  .note b{color:#8a6d1a}
+  nav.toc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:14px 0;
+          font-size:13px;display:flex;flex-wrap:wrap;gap:6px 16px}
+  nav.toc a{color:#2b6cb0;text-decoration:none}
+  nav.toc a:hover{text-decoration:underline}
+  table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f0f2f5;font-weight:600;white-space:nowrap}
+  td.num{font-family:"SF Mono",Menlo,Consolas,monospace;white-space:nowrap}
+  td.ascii{font-family:"SF Mono",Menlo,Consolas,monospace;font-weight:600;white-space:nowrap}
+  .tag{display:inline-block;padding:0 8px;border-radius:10px;font-size:11px;color:#fff;white-space:nowrap}
+  .t-none{background:var(--c-none)} .t-blue{background:var(--c-blue)} .t-orange{background:var(--c-orange)}
+  .t-green{background:var(--c-green)} .t-purple{background:var(--c-purple)} .t-teal{background:var(--c-teal)}
+  .t-red{background:var(--c-red)}
+  tr.rsv td{color:#b0b4ba;background:#fafbfc}
+  .src{display:inline-block;background:#e8f0fb;color:#1a5fb4;border-radius:4px;padding:0 5px;
+       font-size:11px;font-weight:700;font-family:"SF Mono",Menlo,Consolas,monospace}
+  /* 精度阶梯 */
+  .ladder{display:flex;align-items:flex-end;gap:8px;margin:22px 0 6px;height:170px}
+  .ladder .step{flex:1;display:flex;flex-direction:column;justify-content:flex-end;text-align:center;height:100%}
+  .ladder .bar{border-radius:6px 6px 0 0;margin:0 auto;width:78%}
+  .ladder .v{font-size:12px;font-weight:600;margin-top:6px}
+  .ladder .n{font-size:12px;color:var(--sub)}
+  /* 分组卡片 */
+  .grp{border:1px solid var(--line);border-left-width:5px;border-radius:8px;padding:12px 16px;margin:12px 0;background:#fff}
+  .grp h3{margin-top:0}
+  .kv{display:grid;grid-template-columns:88px 1fr;gap:2px 12px;font-size:13px;margin-top:6px}
+  .kv dt{color:var(--sub);white-space:nowrap}
+  .kv dd{margin:0}
+  .gl-none{border-left-color:var(--c-none)} .gl-blue{border-left-color:var(--c-blue)}
+  .gl-orange{border-left-color:var(--c-orange)} .gl-green{border-left-color:var(--c-green)}
+  .gl-purple{border-left-color:var(--c-purple)} .gl-teal{border-left-color:var(--c-teal)}
+  .gl-red{border-left-color:var(--c-red)}
+  .figwrap{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;overflow-x:auto}
+  .up{color:var(--c-green);font-weight:600}.down{color:var(--c-red);font-weight:600}
+  .side{color:#2b6cb0;font-weight:600}
+  footer{color:var(--sub);font-size:12px;border-top:1px solid var(--line);margin-top:36px;padding-top:14px}
+  footer a{color:#2b6cb0;word-break:break-all}
+  /* SVG 状态转移图 */
+  .r-none{fill:#f2f3f5;stroke:#9aa0a6;stroke-width:2}
+  .r-blue{fill:#eaf3fc;stroke:#4a90d9;stroke-width:2}
+  .r-orange{fill:#fdf2e2;stroke:#e8963c;stroke-width:2}
+  .r-green{fill:#e9f7ee;stroke:#43a567;stroke-width:2}
+  .r-purple{fill:#f1ecf9;stroke:#8e6fc0;stroke-width:2}
+  .r-teal{fill:#e6f4f4;stroke:#3aa6a6;stroke-width:2}
+  .r-red{fill:#fbeae7;stroke:#d9634f;stroke-width:2}
+  .r-note{fill:#fbfbfd;stroke:#9aa0a6;stroke-width:1.5;stroke-dasharray:4 3}
+  .t1{font-size:11px;font-weight:700;fill:#1f2329;font-family:"SF Mono",Menlo,Consolas,monospace}
+  .t2{font-size:9.5px;fill:#5f6368}
+  .st{font-size:13px;font-weight:700;fill:#333}
+  .sn{font-size:10px;fill:#777}
+  .nl{font-size:9.5px;font-weight:700;fill:#444;paint-order:stroke;stroke:#fff;stroke-width:3px}
+  .af{stroke:#43a567;stroke-width:1.6;fill:none}
+  .afd{stroke:#43a567;stroke-width:1.4;stroke-dasharray:6 4;fill:none}
+  .ab{stroke:#d9634f;stroke-width:1.5;stroke-dasharray:5 3;fill:none}
+  .am{stroke:#9aa0a6;stroke-width:1.4;stroke-dasharray:4 3;fill:none}
+  .at{stroke:#3aa6a6;stroke-width:1.6;fill:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>表 4-2《定位状态描述说明》全方位解读</h1>
+    <p class="sub">来源：《UG016 数据通信接口协议》（北云科技）第 65–66 页 · 适用于 BESTPOS / BESTGNSSPOS / BESTUTM / BESTGNSSVEL / HEADING 等消息中的
+      <code>pos type</code>（定位/定向类型）与 <code>vel type</code>（速度类型）字段 · 已与源头文档《OEM7 Commands and Logs Reference Manual v11》逐条核对</p>
+  </div>
+</header>
+<div class="wrap">
+
+<nav class="toc">
+  <span>目录：</span>
+  <a href="#premise">阅读前提与出处</a>
+  <a href="#concept">三个关键词</a>
+  <a href="#ladder">精度阶梯</a>
+  <a href="#fulltable">完整速查表</a>
+  <a href="#groups">分组详解</a>
+  <a href="#diagram">状态转移图</a>
+  <a href="#transitions">转移条件对照表</a>
+  <a href="#inout">进出条件汇总表</a>
+  <a href="#related">与其他表的关系</a>
+  <a href="#oem7diff">OEM7 对比</a>
+  <a href="#faq">常见问题</a>
+</nav>
+
+<h2 id="premise">0. 阅读前提与出处图例</h2>
+<div class="note">
+  <p><b>① 出处图例：</b>
+    <span class="src">M</span> 《OEM7 Commands and Logs Reference Manual v11》（本地 <code>OEM7_Commands_Logs_Manual.pdf</code>，北云协议的源头文档，<b>优先级最高</b>；Table 74 见 P434–435，引用均标注手册页码）&nbsp;
+    <span class="src">P</span> UG016 协议原文（表 4-2，P65–66）&nbsp;
+    <span class="src">N</span> NovAtel 在线文档 docs.novatel.com（较新版本）&nbsp;
+    <span class="src">V</span> NovAtel《OEMV Family Firmware Reference Manual》&nbsp;
+    <span class="src">E</span> 工程解读（无直接官方条文、依据解算原理整理的内容，均已单独标注）</p>
+  <p><b>② 这是一张“枚举定义表”，不是“状态机说明书”。</b>协议与 OEM7 手册都只定义各数值的含义；接收机每个历元（每个输出时刻）只会处于<b>其中一种</b>状态。本文第 5–7 节的转移图与条件表以 OEM7 手册的命令与行为描述为准（超时命令、RTK 60 s 外推、RTKINTEGERCRITERIA、UALCONTROL 等）<span class="src">M</span>，手册未覆盖的连接关系标注为工程解读 <span class="src">E</span>。</p>
+  <p><b>③ 协议原文的笔误（已由 OEM7 v11 P435 证实）<span class="src">M</span>：</b><code>79/80 INS_PPPP_BASIC*</code> 多写了一个 P，正名为 <code>INS_PPP_BASIC*</code>；数值 <b>75、76</b> 在原文中跳过未列出（OEM7 v11 同样跳过）。</p>
+  <p><b>④ 表中的精度数值（米级/亚米级/分米级/厘米级）为行业典型经验值</b>，协议与 OEM7 手册均不承诺精度，仅供理解量级 <span class="src">E</span>。北云表 4-2 与 OEM7 v11 Table 74 的逐项对比见第 8.5 节。</p>
+</div>
+
+<h2 id="concept">1. 看懂这张表只需要三个关键词</h2>
+<div class="card">
+  <p>整张表 40 余个取值，本质上是由三个维度组合出来的：</p>
+  <table>
+    <tr><th style="width:150px">维度</th><th>取值</th><th>说明</th></tr>
+    <tr><td><b>观测手段</b></td><td>伪距 / 载波相位 / 多普勒 / 惯性(INS)</td>
+        <td>伪距：用码测距，米级；载波相位：用载波波长（约 19cm）测距，精度高但存在整周模糊度；多普勒：由频移测速；INS：惯性递推。</td></tr>
+    <tr><td><b>增强源</b></td><td>无 / 码差分(DGPS) / SBAS / RTK / PPP / INS</td>
+        <td>有没有外部改正数，决定了能从“单点”升级到哪一级。RTK 来自本地基站或网络 RTK，PPP 来自星基（L-Band）/网络播发的精密改正【M P435】。</td></tr>
+    <tr><td><b>模糊度状态</b><br>（仅载波相位涉及）</td><td>浮点(float) / 固定(int/fixed)</td>
+        <td>载波相位整周模糊度尚未解成整数 → “浮点解”（分米级）；成功解成整数并通过检验 → “固定解”（厘米级）。这是 RTK 解算质量的分水岭。</td></tr>
+  </table>
+  <p class="sub">记忆口诀：<b>“伪距定粗细、增强定档位、模糊度定精度”</b>。看到任意一个状态名，先拆这三件事即可定位它在表中的位置。</p>
+</div>
+
+<h2 id="ladder">2. 精度阶梯（典型经验值，非协议规定）</h2>
+<div class="card">
+  <div class="ladder">
+    <div class="step"><div class="bar" style="height:8px;background:var(--c-none)"></div><div class="v">—</div><div class="n">NONE<br>无解</div></div>
+    <div class="step"><div class="bar" style="height:36px;background:var(--c-blue)"></div><div class="v">1~3 m</div><div class="n">SINGLE 单点解<br>（伪距）</div></div>
+    <div class="step"><div class="bar" style="height:56px;background:var(--c-blue)"></div><div class="v">0.3~1 m</div><div class="n">PSRDIFF / WAAS<br>码差分 / SBAS</div></div>
+    <div class="step"><div class="bar" style="height:82px;background:var(--c-orange)"></div><div class="v">0.1~0.5 m</div><div class="n">*_FLOAT 浮点解<br>（载波，模糊度未固定）</div></div>
+    <div class="step"><div class="bar" style="height:112px;background:var(--c-green)"></div><div class="v">1~2 cm</div><div class="n">*_INT 固定解<br>（RTK 模糊度固定）</div></div>
+    <div class="step"><div class="bar" style="height:100px;background:var(--c-teal)"></div><div class="v">cm~dm</div><div class="n">PPP（收敛完成后）<br>精密单点定位</div></div>
+  </div>
+  <p class="sub">INS 组合各档（INS_PSRSP ~ INS_RTKFIXED）精度与其对应的纯 GNSS 档位相当，但短时遮挡期间可依靠惯导继续维持输出；PROPAGATED（滤波外推）精度随外推时间不断退化。</p>
+</div>
+
+<h2 id="fulltable">3. 完整速查表（协议全部取值，已与 OEM7 v11 Table 74 核对）</h2>
+<div class="card">
+<table>
+  <tr><th>数值</th><th>ASCII 值</th><th>协议原文描述</th><th>分组</th><th>典型精度*</th><th>一句话理解（含 OEM7 v11 核对结果）</th></tr>
+  <tr><td class="num">0</td><td class="ascii">NONE</td><td>未解算</td><td><span class="tag t-none">无解</span></td><td>—</td><td>星不够 / 还没收敛，当前没有可用位置（与 OEM7 一致）</td></tr>
+  <tr><td class="num">1</td><td class="ascii">FIXEDPOS</td><td>位置已由FIX POSITION命令固定</td><td><span class="tag t-none">用户固定</span></td><td>固定坐标</td><td>用户把坐标“钉死”（典型：基站模式）；OEM7：也可由<b>位置平均（position averaging）</b>固定【M P434】</td></tr>
+  <tr><td class="num">2</td><td class="ascii">FIXEDHEIGHT</td><td>位置已由FIX HEIGHT或FIX AUTO命令固定</td><td><span class="tag t-none">用户固定</span></td><td>高程固定</td><td>只钉死高程，水平位置照常解算（2D 定位）；OEM7：同样可由位置平均固定【M P434】</td></tr>
+  <tr class="rsv"><td class="num">3</td><td class="ascii">Reserved</td><td>预留</td><td>—</td><td>—</td><td>OEM7 v11 将 3–7 全部列为预留【M】</td></tr>
+  <tr><td class="num">4</td><td class="ascii">FLOATCONV</td><td>浮点载波相位模糊解</td><td><span class="tag t-orange">浮点</span></td><td>分米级</td><td>传统滤波器的载波浮点解；OEM4/OEM6 时代取值，OEM7 v11 已将 3–7 列为预留【M】</td></tr>
+  <tr><td class="num">5</td><td class="ascii">WIDELANE</td><td>宽巷模糊解</td><td><span class="tag t-orange">浮点</span></td><td>分米级</td><td>宽巷组合模糊度解算阶段；OEM7 v11 列为预留【M】</td></tr>
+  <tr><td class="num">6</td><td class="ascii">NARROWLANE</td><td>窄巷模糊解</td><td><span class="tag t-orange">浮点</span></td><td>分米级</td><td>窄巷组合模糊度解算阶段；OEM7 v11 列为预留【M】</td></tr>
+  <tr class="rsv"><td class="num">7</td><td class="ascii">Reserved</td><td>预留</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td class="num">8</td><td class="ascii">DOPPLER_VELOCITY</td><td>使用瞬时多普勒计算速度</td><td><span class="tag t-none">特殊</span></td><td>仅速度</td><td>定不了位，但还能用多普勒频移测速（与 OEM7 一致；常见于 vel type）</td></tr>
+  <tr class="rsv"><td class="num">9-15</td><td class="ascii">Reserved</td><td>预留</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td class="num">16</td><td class="ascii">SINGLE</td><td>单点解</td><td><span class="tag t-blue">伪距</span></td><td>米级</td><td>最基本的定位：≥4 颗星、无差分（OEM7：Single point position，一致）</td></tr>
+  <tr><td class="num">17</td><td class="ascii">PSRDIFF</td><td>伪距差分</td><td><span class="tag t-blue">伪距</span></td><td>亚米级</td><td>收到本地码差分改正（DGPS/RTCM）；龄期门限 PSRDIFFTIMEOUT 默认 300 s【M P284】</td></tr>
+  <tr><td class="num">18</td><td class="ascii">WAAS</td><td>SBAS解</td><td><span class="tag t-blue">伪距</span></td><td>米级</td><td>收到星基增强系统改正（WAAS/EGNOS/BDSBAS 等）；改正丢失后的保持时间由 SBASTIMEOUT 控制【M P324】</td></tr>
+  <tr><td class="num">19</td><td class="ascii">PROPAGATED</td><td>由卡尔曼滤波器在没有新观测的情况下推算解</td><td><span class="tag t-blue">推算</span></td><td>随时间退化</td><td>观测短暂中断，滤波器“硬撑”外推（与 OEM7 一致）</td></tr>
+  <tr class="rsv"><td class="num">20-31</td><td class="ascii">Reserved</td><td>预留</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td class="num">32</td><td class="ascii">L1_FLOAT</td><td>L1浮点解</td><td><span class="tag t-orange">浮点</span></td><td>分米级</td><td>单频载波 RTK，模糊度收敛中（OEM7：Floating L1 ambiguity solution）</td></tr>
+  <tr><td class="num">33</td><td class="ascii">IONOFREE_FLOAT</td><td>无电离层浮点解</td><td><span class="tag t-orange">浮点</span></td><td>分米级</td><td>双频无电离层组合浮点解；OEM7 v11 将 33 列为预留【M】</td></tr>
+  <tr><td class="num">34</td><td class="ascii">NARROW_FLOAT</td><td>窄带浮点解</td><td><span class="tag t-orange">浮点</span></td><td>分米级</td><td>窄巷模糊度收敛中，离固定最近的一步（OEM7：Floating narrow-lane ambiguity solution）</td></tr>
+  <tr class="rsv"><td class="num">35-47</td><td class="ascii">Reserved</td><td>预留</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td class="num">48</td><td class="ascii">L1_INT</td><td>L1固定解</td><td><span class="tag t-green">固定</span></td><td>厘米级</td><td>单频模糊度已固定（OEM7：Integer L1 ambiguity solution）</td></tr>
+  <tr><td class="num">49</td><td class="ascii">WIDE_INT</td><td>宽带固定解</td><td><span class="tag t-green">固定</span></td><td>厘米级</td><td>宽巷模糊度已固定（OEM7：Integer wide-lane ambiguity solution）</td></tr>
+  <tr><td class="num">50</td><td class="ascii">NARROW_INT</td><td>窄带固定解</td><td><span class="tag t-green">固定</span></td><td>厘米级</td><td>窄巷模糊度已固定——通常说的“RTK 固定解”（OEM7：Integer narrow-lane ambiguity solution）</td></tr>
+  <tr><td class="num">51</td><td class="ascii">RTK_DIRECT_INS</td><td>RTK状态，其中RTK直接通过INS初始化</td><td><span class="tag t-green">固定</span>/<span class="tag t-purple">INS</span></td><td>厘米级</td><td>OEM7 原文：RTK 滤波器由 INS 滤波器直接初始化（RTK filter directly initialized from the INS filter）【M P434】——遮挡后“秒固定”的关键；与 OEM7 v11 一致</td></tr>
+  <tr><td class="num">52</td><td class="ascii">INS_SBAS</td><td>天线校正后INS位置</td><td><span class="tag t-purple">INS组合</span></td><td>米级</td><td>组合滤波 + SBAS 改正（OEM7：INS calculated position corrected for the antenna，完全一致）</td></tr>
+  <tr><td class="num">53</td><td class="ascii">INS_PSRSP</td><td>INS伪距单点解-没有DGPS校正</td><td><span class="tag t-purple">INS组合</span></td><td>米级</td><td>组合滤波，无差分（对应 SINGLE，与 OEM7 一致）</td></tr>
+  <tr><td class="num">54</td><td class="ascii">INS_PSRDIFF</td><td>INS伪距差分</td><td><span class="tag t-purple">INS组合</span></td><td>亚米级</td><td>组合滤波 + 码差分（对应 PSRDIFF，与 OEM7 一致）</td></tr>
+  <tr><td class="num">55</td><td class="ascii">INS_RTKFLOAT</td><td>INS RTK浮点解</td><td><span class="tag t-purple">INS组合</span></td><td>分米级</td><td>组合滤波 + RTK 浮点（对应 *_FLOAT，与 OEM7 一致）</td></tr>
+  <tr><td class="num">56</td><td class="ascii">INS_RTKFIXED</td><td>INS RTK固定解</td><td><span class="tag t-purple">INS组合</span></td><td>厘米级</td><td>组合滤波 + RTK 固定（对应 NARROW_INT，与 OEM7 一致）</td></tr>
+  <tr class="rsv"><td class="num">57-67</td><td class="ascii">Reserved</td><td>预留</td><td>—</td><td>—</td><td>OEM7 v11 同为预留；在线新版新增 67 EXT_CONSTRAINED【N】</td></tr>
+  <tr><td class="num">68</td><td class="ascii">PPP_CONVERGING</td><td>正在进行精密单点定位（TerraStar-C）解算</td><td><span class="tag t-teal">PPP</span></td><td>分米~米级</td><td>PPP 改正可用，精度还在收敛；OEM7：Converging TerraStar-C / TerraStar-C PRO / TerraStar-X【M P434】</td></tr>
+  <tr><td class="num">69</td><td class="ascii">PPP</td><td>精密单点定位（TerraStar-C）</td><td><span class="tag t-teal">PPP</span></td><td>厘米~分米级</td><td>PPP 已收敛，可长时间维持；OEM7：Converged TerraStar-C / C PRO / X【M P435】</td></tr>
+  <tr><td class="num">70</td><td class="ascii">OPERATIONAL</td><td>精度在UAL范围内</td><td><span class="tag t-red">UAL监控</span></td><td>—</td><td>完好性监控：解的标准差在用户设定的 operational 门限内【M §2.166】</td></tr>
+  <tr><td class="num">71</td><td class="ascii">WARNING</td><td>精度在UAL范围外，但在警告范围内</td><td><span class="tag t-red">UAL监控</span></td><td>—</td><td>标准差超 operational 门限但未超 warning 门限【M §2.166】</td></tr>
+  <tr><td class="num">72</td><td class="ascii">OUT_OF_BOUNDS</td><td>解的精度在UAL极限之外</td><td><span class="tag t-red">UAL监控</span></td><td>—</td><td>标准差超出 UAL 极限，解不可用【M §2.166】</td></tr>
+  <tr><td class="num">73</td><td class="ascii">INS_PPP_Converging</td><td>正在进行Ins PPP解（TerraStar-C）</td><td><span class="tag t-teal">PPP</span>/<span class="tag t-purple">INS</span></td><td>分米~米级</td><td>组合滤波 + PPP，收敛中；OEM7：INS with TerraStar-C / C PRO / X PPP solution converging【M P435】</td></tr>
+  <tr><td class="num">74</td><td class="ascii">INS_PPP</td><td>Ins PPP解（TerraStar-C）</td><td><span class="tag t-teal">PPP</span>/<span class="tag t-purple">INS</span></td><td>厘米~分米级</td><td>组合滤波 + PPP，已收敛；OEM7：TerraStar-C / C PRO / X【M P435】</td></tr>
+  <tr class="rsv"><td class="num">75-76</td><td class="ascii">—（原文跳过）</td><td>原文未列出</td><td>—</td><td>—</td><td>按预留处理（OEM7 v11 同样跳过）【M】</td></tr>
+  <tr><td class="num">77</td><td class="ascii">PPP_BASIC_CONVERGING</td><td>正在进行精密单点定位（TerraStar-L）解算</td><td><span class="tag t-teal">PPP</span></td><td>分米级</td><td>基础档 PPP（TerraStar-L），收敛中（与 OEM7 一致）</td></tr>
+  <tr><td class="num">78</td><td class="ascii">PPP_BASIC</td><td>精密单点定位（TerraStar-L）</td><td><span class="tag t-teal">PPP</span></td><td>分米级</td><td>基础档 PPP，已收敛（与 OEM7 一致）</td></tr>
+  <tr><td class="num">79</td><td class="ascii">INS_PPPP_BASIC_Converging ⚠</td><td>正在进行Ins PPP解（TerraStar-L）</td><td><span class="tag t-teal">PPP</span>/<span class="tag t-purple">INS</span></td><td>分米级</td><td>⚠ 笔误：OEM7 v11 P435 正名 <b>INS_PPP_BASIC_CONVERGING</b>【M】</td></tr>
+  <tr><td class="num">80</td><td class="ascii">INS_PPPP_BASIC ⚠</td><td>Ins PPP解（TerraStar-L）</td><td><span class="tag t-teal">PPP</span>/<span class="tag t-purple">INS</span></td><td>分米级</td><td>⚠ 笔误：OEM7 v11 P435 正名 <b>INS_PPP_BASIC</b>【M】</td></tr>
+</table>
+<p class="sub">* “典型精度”为行业经验量级，协议与 OEM7 手册均不承诺【E】。4/5/6（FLOATCONV/WIDELANE/NARROWLANE）与 32/33/34（L1_FLOAT/IONOFREE_FLOAT/NARROW_FLOAT）都是浮点类解，前者源自早期 OEM4/OEM6 时代的命名，OEM7 v11 已将 4/5/6 与 33 列为预留，仅保留 32/34【M】；北云为兼容而全部保留。</p>
+</div>
+
+<h2 id="groups">4. 分组详解：每一组“怎么进入、怎么退出、什么时候出现”</h2>
+
+<div class="grp gl-none">
+  <h3>⓪ 无解与用户固定：NONE(0) / FIXEDPOS(1) / FIXEDHEIGHT(2) / DOPPLER_VELOCITY(8)</h3>
+  <dl class="kv">
+    <dt>含义</dt><dd>NONE：接收机当前给不出位置（上电初期、卫星数不足、解不收敛）。FIXEDPOS/FIXEDHEIGHT：用户通过 <code>FIX</code> 命令把位置或高程人工固定——OEM7 注明也可由<b>位置平均（position averaging）</b>产生【M P434】；基站模式的标准用法。DOPPLER_VELOCITY：观测不足以定位，但仍可用瞬时多普勒给出速度（多出现在 BESTGNSSVEL 的 vel type 字段）。</dd>
+    <dt>进入条件</dt><dd>NONE：上电/复位初始、跟踪卫星 &lt;4 颗、天线断开或被完全遮挡、强干扰导致失锁。FIXEDPOS/FIXEDHEIGHT：用户执行 <code>FIX POSITION</code> / <code>FIX HEIGHT</code> / <code>FIX AUTO</code>，或位置平均完成【M】。OEM7 使用建议：FIX POSITION 坐标应精确到几米以内（跟踪 5–6 颗星的单点即可），<b>仅用于基站</b>——对流动站施加会退出 RTK 模式，且不加速模糊度固定【M §2.47 P163】。DOPPLER_VELOCITY：可用卫星不足以定位但尚可测速。</dd>
+    <dt>退出条件</dt><dd>NONE：锁定 ≥4 颗星且伪距解收敛 → SINGLE。FIXEDPOS/FIXEDHEIGHT：执行 <code>FIX NONE</code> 解除固定或重启 → 回到正常解算流程【M §2.47 FIX 类型 NONE=Unfix】。DOPPLER_VELOCITY：观测恢复到可定位 → SINGLE；进一步恶化 → NONE。</dd>
+    <dt>典型场景</dt><dd>冷启动头几秒输出 NONE；基站架设后 FIXEDPOS 长期保持；隧道内短时可能只剩 DOPPLER_VELOCITY 速度输出。</dd>
+  </dl>
+</div>
+
+<div class="grp gl-blue">
+  <h3>① 伪距类：SINGLE(16) / PSRDIFF(17) / WAAS(18) / PROPAGATED(19)</h3>
+  <dl class="kv">
+    <dt>含义</dt><dd>都只用码伪距（不用载波相位），是一切定位的“地基”。SINGLE=无增强；PSRDIFF=本地码差分（DGPS，RTCM 改正数）；WAAS=星基增强（SBAS 地球静止卫星播发改正）；PROPAGATED=观测暂时没了，卡尔曼滤波按运动模型外推。</dd>
+    <dt>进入条件</dt><dd>SINGLE：≥4 星、伪距残差收敛、无任何差分改正。PSRDIFF：在 SINGLE 基础上收到有效 RTCM 码差分改正且差分龄期未超限。WAAS：收到 SBAS 星基改正。PROPAGATED：原已定位，观测突然中断但中断时间仍在滤波允许外推窗口内。</dd>
+    <dt>退出条件</dt><dd>SINGLE：失锁/&lt;4 星 → NONE；收到码差分 → PSRDIFF；收到 SBAS → WAAS；RTK 载波可用 → 浮点类。PSRDIFF：改正龄期超 <b>PSRDIFFTIMEOUT</b>（默认 300 s，范围 2–1000 s；RTCA SCAT-I 标准建议 ≤22 s）或改正中断 → 退回 SINGLE【M §2.109 P284】。WAAS：SBAS 改正丢失超过 <b>SBASTIMEOUT</b>（默认 auto）→ 退回【M §2.134 P324】。PROPAGATED：观测恢复 → 回到相应解算状态；外推超时/方差超限 → NONE。OEM7 补充：非 RTK 模式下伪距差分解按 PSRDIFFTIMEOUT 时长维持【M P429】。</dd>
+    <dt>典型场景</dt><dd>无任何差分源的独立使用 = SINGLE；接电台/网络 DGPS = PSRDIFF；开阔地带收到 SBAS = WAAS；过立交桥下 1–2 秒丢星但马上恢复 = 可能闪一下 PROPAGATED。</dd>
+  </dl>
+</div>
+
+<div class="grp gl-orange">
+  <h3>② 浮点类：FLOATCONV(4) / WIDELANE(5) / NARROWLANE(6) / L1_FLOAT(32) / IONOFREE_FLOAT(33) / NARROW_FLOAT(34)</h3>
+  <dl class="kv">
+    <dt>含义</dt><dd>已经在用载波相位（RTK 引擎已启动），但整周模糊度还没解成整数。<b>浮点是通往固定的“收敛走廊”</b>，精度分米级。其中 4/5/6 为 OEM4/OEM6 时代命名（OEM7 v11 已列为预留），32/34 为现行 RTK 引擎命名【M】。</dd>
+    <dt>进入条件</dt><dd>收到 RTK 载波相位改正数（基站/网络 RTK），共视卫星数满足要求，模糊度参数开始估计但尚未固定。模糊度固定所需时间取决于 RTK 基线长度、电离层活跃度与其他观测条件【N】。</dd>
+    <dt>退出条件</dt><dd>模糊度固定并确认 → 对应的 *_INT 固定解（升级）；RTK 改正中断 → 按 <b>RTKTIMEOUT</b>（默认 60 s，范围 5–60 s）判定失效后退回 PSRDIFF/SINGLE【M §2.129 P316】；低延迟 RTK 在最后一次基站观测后最多外推 <b>60 s</b> 即回退到最佳可用解，精度退化体现在标准差字段【M P429–430】；基线过长或共视星不足 → 在浮点各阶段之间重新收敛。</dd>
+    <dt>典型场景</dt><dd>RTK 刚连上改正数的几秒~几十秒；遮挡后重新收敛期间；基线长、电离层活跃时可能长期停在浮点。</dd>
+  </dl>
+</div>
+
+<div class="grp gl-green">
+  <h3>③ 固定类：L1_INT(48) / WIDE_INT(49) / NARROW_INT(50) / RTK_DIRECT_INS(51)</h3>
+  <dl class="kv">
+    <dt>含义</dt><dd>整周模糊度成功解为整数并确认——<b>厘米级 RTK 固定解</b>，是测量级应用的目标状态。L1_INT=单频固定；WIDE_INT=宽巷固定；NARROW_INT=窄巷固定（双频 RTK 的最终形态，最常见）；RTK_DIRECT_INS=RTK 滤波器由 INS 滤波器直接初始化而“秒固定”【M P434】。</dd>
+    <dt>进入条件</dt><dd>浮点解收敛后模糊度固定并通过确认；或（带 INS 的机型）由 INS 直接初始化（RTK_DIRECT_INS）【M】。</dd>
+    <dt>退出条件</dt><dd>周跳、遮挡、多径导致模糊度失效 → 退回浮点类重新收敛；<b>RTKINTEGERCRITERIA</b>：固定解的估计标准差超过门限（默认 TOTAL_STDDEV 1.0）时，被强制按对应浮点解上报（如 NARROW_INT → NARROW_FLOAT）【M §2.120 P302】；RTK 改正数中断超 RTKTIMEOUT（默认 60 s）→ 退回 PSRDIFF/SINGLE【M】；RTK ASSIST 可用 L-Band 改正在中断期间维持 RTK，维持时长由 RTKASSISTTIMEOUT 与订阅限制决定【M §2.117–2.118】；卫星失锁 → NONE。</dd>
+    <dt>典型场景</dt><dd>开阔天空 + RTK 链路正常时长期保持 NARROW_INT；这是评估设备性能与干扰影响时最关心的状态（“固定率”）。</dd>
+  </dl>
+</div>
+
+<div class="grp gl-purple">
+  <h3>④ INS 组合类：INS_SBAS(52) / INS_PSRSP(53) / INS_PSRDIFF(54) / INS_RTKFLOAT(55) / INS_RTKFIXED(56)</h3>
+  <dl class="kv">
+    <dt>含义</dt><dd>GNSS/INS 紧耦合（组合导航）机型输出的解，与纯 GNSS 各档<b>一一对应</b>：INS_PSRSP≈SINGLE、INS_PSRDIFF≈PSRDIFF、INS_SBAS≈WAAS、INS_RTKFLOAT≈浮点、INS_RTKFIXED≈固定。区别是解由组合滤波器输出，惯性参与解算与质量控制。52–56 的描述与 OEM7 v11 完全一致【M P434】。</dd>
+    <dt>进入条件</dt><dd>设备为 GNSS/INS 组合型号且组合导航使能、IMU 已对准；之后按 GNSS 增强条件在 52~56 之间升降档，条件与纯 GNSS 对应档位相同。</dd>
+    <dt>退出条件</dt><dd>与对应 GNSS 档位相同（改正中断降级、模糊度固定升级）；短时完全丢星时依靠惯导维持输出；INS 功能关闭/故障则回到纯 GNSS 状态族。</dd>
+    <dt>典型场景</dt><dd>车载/机载组合导航：隧道、城市峡谷中 INS_RTKFIXED → INS_RTKFLOAT → INS_PSRSP 平滑退化，出遮挡后借惯导快速恢复固定（甚至 RTK_DIRECT_INS 秒固定【M】）。</dd>
+  </dl>
+</div>
+
+<div class="grp gl-teal">
+  <h3>⑤ PPP 类：PPP_CONVERGING(68) / PPP(69) / PPP_BASIC_CONVERGING(77) / PPP_BASIC(78) 及 INS 组合版(73/74/79/80)</h3>
+  <dl class="kv">
+    <dt>含义</dt><dd>精密单点定位：不依赖本地基站，靠星基（L-Band）或网络播发的精密轨道/钟差改正，全球范围达到厘米~分米级【M P435】。OEM7 v11 记载的服务档：68/69/73/74 对应 <b>TerraStar-C / TerraStar-C PRO / TerraStar-X</b>，77–80 对应 <b>TerraStar-L</b>【M P434–435】；带 INS_PPP 前缀的是组合滤波版本。</dd>
+    <dt>进入条件</dt><dd>订购并使能 PPP 服务、接收到 PPP 改正数（L-Band 卫星或网络）→ 先进入 *_CONVERGING 收敛态；精度达到收敛门限 → 转入 PPP/PPP_BASIC 收敛完成态。</dd>
+    <dt>退出条件</dt><dd>改正信号中断或长时间遮挡 → 退回 CONVERGING 重新收敛（严重时回到 SINGLE）；PPP 改正龄期超 <b>PPPTIMEOUT</b>（默认 360 s，范围 5–900 s）后不再应用改正，未改正的观测也不用于滤波【M §2.103 P272】；取消 PPP 服务 → 回到普通解算状态族。</dd>
+    <dt>典型场景</dt><dd>无基站覆盖的远海、荒漠、精准农业；开阔环境收敛完成后可长期保持 PPP。</dd>
+  </dl>
+</div>
+
+<div class="grp gl-red">
+  <h3>⑥ UAL 完好性监控类：OPERATIONAL(70) / WARNING(71) / OUT_OF_BOUNDS(72)</h3>
+  <dl class="kv">
+    <dt>含义</dt><dd>UAL（User Accuracy Level，用户精度等级）监控：不只报位置，还实时判断“这个解可不可信”。OEM7 定义：UAL 是<b>用户自定义的标准差门限</b>，用于判定解的可接受性【M §2.166 P374】。OPERATIONAL=标准差在 operational 门限内；WARNING=超 operational 但在 warning 门限内；OUT_OF_BOUNDS=超出 UAL 极限。</dd>
+    <dt>进入条件</dt><dd>用 <code>UALCONTROL</code> 命令启用并设定 operational / warning 门限后，BESTPOS 与 GPGGA 的解类型改由这些门限控制；<code>SETBESTPOSCRITERIA</code> 决定拿哪些标准差与门限比较【M §2.166】。</dd>
+    <dt>退出条件</dt><dd>标准差改善则 OPERATIONAL←WARNING←OUT_OF_BOUNDS 逐级恢复，恶化则反向降级；对应 NMEA 质量指示：OPERATIONAL→4、WARNING→5、OUT_OF_BOUNDS→1【M Table 68 P375】。</dd>
+    <dt>典型场景</dt><dd>OEM7 记载：农业自动驾驶系统依赖 GPGGA 固定解类型（4），RTK 中断会造成脱开；配合 STEADYLINE + GLIDE 在 RTK 中断时维持固定级精度输出，UALCONTROL 保证所需解类型不中断【M §2.166】。</dd>
+  </dl>
+</div>
+
+<h2 id="diagram">5. 状态转移图：状态是如何流转的</h2>
+<p>下图把整张表组织成一台状态机。<b>中间主链</b>是接收机正常工作时的“精度提升路径”（从 NONE 一路到 RTK 固定解）；<b>左侧红色虚线</b>是数据中断时的“降级路径”；<b>右侧三块</b>是与主链平行存在的特殊模式（用户 FIX 固定、PPP 精密单点、INS 组合与 UAL 完好性替换）。所有转移条件均来自 OEM7 v11 手册的官方描述（标注 <span class="src">M</span> 及章节/页码），超时数值均为手册记载的出厂默认值，无任何推测成分。</p>
+<div class="figwrap">
+<svg viewBox="0 0 1160 900" width="1140" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ag" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#43a567"/></marker>
+    <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#d9634f"/></marker>
+    <marker id="ay" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#9aa0a6"/></marker>
+    <marker id="ac" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#3aa6a6"/></marker>
+  </defs>
+
+  <!-- 图例 -->
+  <text x="60" y="24" class="st" font-size="12">图例：</text>
+  <path class="af" d="M110,20 h34" marker-end="url(#ag)"/><text x="152" y="24" class="t2">升级 / 精度提升</text>
+  <path class="ab" d="M262,20 h34" marker-end="url(#ar)"/><text x="304" y="24" class="t2">降级 / 数据中断</text>
+  <path class="at" d="M414,20 h34" marker-end="url(#ac)"/><text x="456" y="24" class="t2">PPP 收敛</text>
+  <path class="am" d="M536,20 h34" marker-end="url(#ay)"/><text x="578" y="24" class="t2">用户命令 / 特殊切换</text>
+  <text x="700" y="24" class="t2">【M §x.x】= OEM7 v11 手册章节出处；超时值为出厂默认</text>
+
+  <!-- ===== 主链节点 ===== -->
+  <rect class="r-none" x="60" y="50" width="230" height="48" rx="8"/>
+  <text x="175" y="70" class="t1" text-anchor="middle">NONE (0)</text>
+  <text x="175" y="88" class="t2" text-anchor="middle">未解算（开机 / 观测不足）</text>
+
+  <rect class="r-blue" x="60" y="170" width="230" height="48" rx="8"/>
+  <text x="175" y="190" class="t1" text-anchor="middle">SINGLE (16)</text>
+  <text x="175" y="208" class="t2" text-anchor="middle">单点解（伪距，米级）</text>
+
+  <rect class="r-blue" x="10" y="290" width="200" height="48" rx="8"/>
+  <text x="110" y="310" class="t1" text-anchor="middle">PSRDIFF (17)</text>
+  <text x="110" y="328" class="t2" text-anchor="middle">伪距差分（亚米级）</text>
+
+  <rect class="r-blue" x="230" y="290" width="200" height="48" rx="8"/>
+  <text x="330" y="310" class="t1" text-anchor="middle">WAAS (18)</text>
+  <text x="330" y="328" class="t2" text-anchor="middle">SBAS 解</text>
+
+  <rect class="r-orange" x="60" y="410" width="230" height="52" rx="8"/>
+  <text x="175" y="430" class="t1" text-anchor="middle">L1_FLOAT (32) / NARROW_FLOAT (34)</text>
+  <text x="175" y="448" class="t2" text-anchor="middle">浮点解：载波相位，模糊度未固定（分米级）</text>
+
+  <rect class="r-green" x="60" y="530" width="230" height="48" rx="8"/>
+  <text x="175" y="550" class="t1" text-anchor="middle">WIDE_INT (49)</text>
+  <text x="175" y="568" class="t2" text-anchor="middle">宽巷整周固定解</text>
+
+  <rect class="r-green" x="60" y="650" width="230" height="48" rx="8"/>
+  <text x="175" y="670" class="t1" text-anchor="middle">NARROW_INT (50) / L1_INT (48)</text>
+  <text x="175" y="688" class="t2" text-anchor="middle">RTK 固定解（厘米级，最高精度）</text>
+
+  <!-- ===== 主链升级箭头 ===== -->
+  <path class="af" d="M175,98 V166" marker-end="url(#ag)"/>
+  <text x="185" y="138" class="nl">锁定卫星、伪距观测充分（≥4 颗）</text>
+
+  <path class="af" d="M150,218 C140,250 115,262 112,286" marker-end="url(#ag)"/>
+  <text x="18" y="262" class="nl">收到伪距差分改正</text>
+
+  <path class="af" d="M200,218 C230,250 315,262 328,286" marker-end="url(#ag)"/>
+  <text x="300" y="262" class="nl">收到 SBAS 改正</text>
+
+  <path class="af" d="M110,338 C110,372 150,388 163,406" marker-end="url(#ag)"/>
+  <text x="8" y="392" class="nl">载波相位可用、RTK 滤波器运行</text>
+  <text x="8" y="404" class="nl">（模糊度尚未固定）</text>
+
+  <path class="af" d="M175,462 V526" marker-end="url(#ag)"/>
+  <text x="185" y="498" class="nl">宽巷整周模糊度固定</text>
+
+  <path class="af" d="M175,578 V646" marker-end="url(#ag)"/>
+  <text x="185" y="616" class="nl">窄巷整周模糊度固定（RTK 固定）</text>
+
+  <!-- ===== 降级箭头（红虚线） ===== -->
+  <path class="ab" d="M40,290 C24,252 38,232 66,220" marker-end="url(#ar)"/>
+  <text x="2" y="238" class="nl">差分龄期&gt;300 s</text>
+  <text x="2" y="250" class="nl">(PSRDIFFTIMEOUT【M §2.109】)</text>
+
+  <path class="ab" d="M412,290 C428,252 310,232 284,220" marker-end="url(#ar)"/>
+  <text x="318" y="238" class="nl">SBAS 中断&gt;180 s</text>
+  <text x="318" y="250" class="nl">(SBASTIMEOUT auto【M §2.134】)</text>
+
+  <path class="ab" d="M60,436 C14,436 14,322 52,316" marker-end="url(#ar)"/>
+  <text x="2" y="352" class="nl">RTK 改正中断：数据龄期&gt;60 s</text>
+  <text x="2" y="364" class="nl">(RTKTIMEOUT【M §2.129】)；低延迟 RTK</text>
+  <text x="2" y="376" class="nl">外推 60 s 后回退最佳可用解【M P430】</text>
+
+  <path class="ab" d="M290,674 C368,674 368,436 294,436" marker-end="url(#ar)"/>
+  <text x="322" y="512" class="nl">RTKINTEGERCRITERIA 触发：固定解标准差超门限</text>
+  <text x="322" y="524" class="nl">(默认 TOTAL_STDDEV 1.0 m)，改报浮点【M §2.120】</text>
+  <text x="322" y="536" class="nl">或 RTK 数据龄期&gt;60 s【M §2.129】</text>
+
+  <path class="am" d="M60,666 C4,666 4,82 56,82" marker-end="url(#ay)"/>
+  <text x="6" y="120" class="nl">观测丢失 / 解算失败</text>
+  <text x="6" y="132" class="nl">→ 回到 NONE</text>
+
+  <!-- ===== 右侧：FIX 固定 ===== -->
+  <rect class="r-none" x="480" y="50" width="300" height="64" rx="8"/>
+  <text x="630" y="72" class="t1" text-anchor="middle">FIXEDPOS (1) / FIXEDHEIGHT (2)</text>
+  <text x="630" y="90" class="t2" text-anchor="middle">用户 FIX 命令固定位置 / 高程（基站常用）</text>
+  <text x="630" y="105" class="t2" text-anchor="middle">位置平均完成后也可进入 FIXEDPOS【M §2.47】</text>
+
+  <path class="am" d="M290,192 C400,192 470,140 528,116" marker-end="url(#ay)"/>
+  <text x="372" y="152" class="nl">FIX POSITION / HEIGHT / AUTO【M §2.47】</text>
+  <path class="am" d="M480,66 C390,66 330,70 294,72" marker-end="url(#ay)"/>
+  <text x="330" y="56" class="nl">FIX NONE 解除固定</text>
+
+  <rect class="r-none" x="480" y="140" width="300" height="44" rx="8"/>
+  <text x="630" y="158" class="t1" text-anchor="middle">DOPPLER_VELOCITY (8)</text>
+  <text x="630" y="176" class="t2" text-anchor="middle">仅速度类型：瞬时多普勒测速【M Table 74】</text>
+
+  <rect class="r-blue" x="480" y="210" width="300" height="44" rx="8"/>
+  <text x="630" y="228" class="t1" text-anchor="middle">PROPAGATED (19)</text>
+  <text x="630" y="246" class="t2" text-anchor="middle">卡尔曼滤波在无新观测时推算【M Table 74】</text>
+
+  <!-- ===== 右侧：PPP ===== -->
+  <text x="480" y="288" class="st" font-size="12">PPP 精密单点定位（L-Band / 网络改正，TerraStar）</text>
+  <rect class="r-teal" x="480" y="300" width="300" height="48" rx="8"/>
+  <text x="630" y="320" class="t1" text-anchor="middle">PPP_CONVERGING (68)</text>
+  <text x="630" y="338" class="t2" text-anchor="middle">TerraStar-C / C PRO / X 收敛中</text>
+
+  <rect class="r-teal" x="480" y="390" width="300" height="48" rx="8"/>
+  <text x="630" y="410" class="t1" text-anchor="middle">PPP (69)</text>
+  <text x="630" y="428" class="t2" text-anchor="middle">TerraStar-C / C PRO / X 已收敛</text>
+
+  <path class="at" d="M615,348 V386" marker-end="url(#ac)"/>
+  <text x="560" y="374" class="nl">收敛完成</text>
+  <path class="ab" d="M782,414 C812,414 812,324 784,324" marker-end="url(#ar)"/>
+  <text x="700" y="374" class="nl">改正龄期&gt;360 s (PPPTIMEOUT【M §2.103】)</text>
+
+  <rect class="r-teal" x="480" y="480" width="300" height="48" rx="8"/>
+  <text x="630" y="500" class="t1" text-anchor="middle">PPP_BASIC_CONVERGING (77)</text>
+  <text x="630" y="518" class="t2" text-anchor="middle">TerraStar-L 收敛中</text>
+
+  <rect class="r-teal" x="480" y="570" width="300" height="48" rx="8"/>
+  <text x="630" y="590" class="t1" text-anchor="middle">PPP_BASIC (78)</text>
+  <text x="630" y="608" class="t2" text-anchor="middle">TerraStar-L 已收敛</text>
+
+  <path class="at" d="M630,528 V566" marker-end="url(#ac)"/>
+  <text x="560" y="552" class="nl">收敛完成</text>
+
+  <!-- ===== 右侧：INS 组合 ===== -->
+  <text x="850" y="40" class="st" font-size="12">INS 组合解（SPAN 系统）</text>
+  <rect class="r-purple" x="850" y="50" width="290" height="118" rx="8"/>
+  <text x="995" y="70" class="t1" text-anchor="middle">INS_SBAS(52) INS_PSRSP(53)</text>
+  <text x="995" y="86" class="t1" text-anchor="middle">INS_PSRDIFF(54) INS_RTKFLOAT(55)</text>
+  <text x="995" y="102" class="t1" text-anchor="middle">INS_RTKFIXED(56) RTK_DIRECT_INS(51)</text>
+  <text x="995" y="126" class="t2" text-anchor="middle">GNSS+INS 组合输出，等级镜像</text>
+  <text x="995" y="141" class="t2" text-anchor="middle">底层 GNSS 解算状态【M Table 74】</text>
+  <text x="995" y="156" class="t2" text-anchor="middle">51：RTK 滤波器由 INS 直接初始化</text>
+
+  <rect class="r-purple" x="850" y="200" width="290" height="90" rx="8"/>
+  <text x="995" y="220" class="t1" text-anchor="middle">INS_PPP_CONVERGING(73) INS_PPP(74)</text>
+  <text x="995" y="236" class="t1" text-anchor="middle">INS_PPP_BASIC_CONVERGING(79)</text>
+  <text x="995" y="252" class="t1" text-anchor="middle">INS_PPP_BASIC(80)</text>
+  <text x="995" y="274" class="t2" text-anchor="middle">INS + TerraStar 组合解【M Table 74】</text>
+
+  <!-- ===== 右侧：UAL ===== -->
+  <text x="850" y="322" class="st" font-size="12">UAL 用户精度级（UALCONTROL ENABLE 后</text>
+  <text x="850" y="338" class="st" font-size="12">替换 BESTPOS / GPGGA 类型【M §2.166】）</text>
+  <rect class="r-red" x="850" y="350" width="290" height="44" rx="8"/>
+  <text x="995" y="368" class="t1" text-anchor="middle">OPERATIONAL (70)</text>
+  <text x="995" y="386" class="t2" text-anchor="middle">σ ≤ Operational 限值</text>
+
+  <rect class="r-red" x="850" y="420" width="290" height="44" rx="8"/>
+  <text x="995" y="438" class="t1" text-anchor="middle">WARNING (71)</text>
+  <text x="995" y="456" class="t2" text-anchor="middle">Operational 限值 &lt; σ ≤ Warning 限值</text>
+
+  <rect class="r-red" x="850" y="490" width="290" height="44" rx="8"/>
+  <text x="995" y="508" class="t1" text-anchor="middle">OUT_OF_BOUNDS (72)</text>
+  <text x="995" y="526" class="t2" text-anchor="middle">σ &gt; Warning 限值</text>
+
+  <path class="ab" d="M952,394 V416" marker-end="url(#ar)"/>
+  <path class="ab" d="M952,464 V486" marker-end="url(#ar)"/>
+  <text x="862" y="408" class="nl">σ 恶化</text>
+  <path class="af" d="M1080,416 V398" marker-end="url(#ag)"/>
+  <path class="af" d="M1080,486 V468" marker-end="url(#ag)"/>
+  <text x="1090" y="478" class="nl">σ 恢复</text>
+
+  <!-- ===== 底部注释框 ===== -->
+  <rect class="r-note" x="60" y="742" width="1080" height="140" rx="8"/>
+  <text x="80" y="766" class="st" font-size="12">关键超时 / 门限命令（OEM7 v11 出厂默认值，均可由用户命令修改）</text>
+  <text x="80" y="790" class="t2" font-size="11">PSRDIFFTIMEOUT 300 s —— 伪距差分改正最大龄期（RTCA SCAT-I 推荐 22 s）【M §2.109 P285】</text>
+  <text x="80" y="810" class="t2" font-size="11">RTKTIMEOUT 60 s —— RTK 数据最大龄期（范围 5–60 s；RTKASSIST 激活时改由 RTKASSISTTIMEOUT 控制）【M §2.129 P315–316】</text>
+  <text x="80" y="830" class="t2" font-size="11">低延迟 RTK 对基站观测最多外推 60 s，超时后 BESTPOS 回退到最佳可用解，精度退化体现在标准差字段【M §3.14 BESTPOS P430】</text>
+  <text x="80" y="850" class="t2" font-size="11">PPPTIMEOUT 360 s —— PPP 改正最大龄期（5–900 s）【M §2.103 P272】；SBASTIMEOUT auto = 180 s —— SBAS 解保持时长【M §2.134 P324】</text>
+  <text x="80" y="870" class="t2" font-size="11">RTKINTEGERCRITERIA TOTAL_STDDEV 1.0 m —— 固定解标准差超门限时改报浮点（如 NARROW_INT→NARROW_FLOAT）【M §2.120 P301–302】；UALCONTROL 默认 disable【M §2.166 P374–375】</text>
+</svg>
+</div>
+<p class="sub">读图要领：正常情况下接收机沿主链“向上爬”——每爬一级都需要新的数据源（差分改正、载波相位、整周模糊度固定）；任何一级数据源中断，就沿红色虚线“向下滑”，滑到哪一级取决于对应超时命令的设定。右侧的 FIX / PPP / INS / UAL 与主链平行：FIX 由用户命令强制进入；PPP 走独立的收敛路径；INS 与 UAL 则是对主链输出的“包装或替换”，不产生新的物理观测。</p>
+
+<h2 id="transitions">6. 转移条件对照表：什么条件满足 / 丢失时跳转到哪个状态</h2>
+<p>下表逐条列出状态跳转的触发条件。<b>升级类</b>（绿色）需要新数据源或更高质量的观测；<b>降级类</b>（红色）由数据中断或质量门限触发；<b>命令类</b>（灰色）由用户命令直接切换。所有带【M】的条目均逐字依据 OEM7 v11 手册。</p>
+<div class="card">
+<table>
+  <tr><th style="width:34px">#</th><th style="width:200px">从 → 到</th><th>触发条件（满足 / 丢失）</th><th style="width:200px">依据</th></tr>
+  <tr><td class="num">1</td><td class="ascii"><span class="side">开机/复位</span> → NONE(0)</td><td>接收机尚未产生任何有效解（上电初始、观测不足以构成解）。</td><td>【M Table 74 P434】</td></tr>
+  <tr><td class="num">2</td><td class="ascii"><span class="up">NONE(0) → SINGLE(16)</span></td><td>跟踪到足够卫星、伪距观测充分（单点定位至少 4 颗），最小二乘/滤波解算成功。</td><td>【M Table 74 P434】＋行业惯例【V】</td></tr>
+  <tr><td class="num">3</td><td class="ascii"><span class="up">SINGLE(16) → PSRDIFF(17)</span></td><td>作为流动站收到伪距差分改正数，且改正数龄期 ≤ <code>PSRDIFFTIMEOUT</code>（默认 <b>300 s</b>）。</td><td>【M §2.109 P285】</td></tr>
+  <tr><td class="num">4</td><td class="ascii"><span class="up">SINGLE(16) → WAAS(18)</span></td><td>使用 SBAS（WAAS/EGNOS 等）播发的改正数参与解算。</td><td>【M Table 74 P434】</td></tr>
+  <tr><td class="num">5</td><td class="ascii"><span class="down">PSRDIFF(17) → SINGLE(16)</span></td><td>差分改正数龄期 &gt; <code>PSRDIFFTIMEOUT</code>（默认 300 s；RTCA SCAT-I 用户建议设 22 s），改正数被弃用。</td><td>【M §2.109 P285；§3.14 P430】</td></tr>
+  <tr><td class="num">6</td><td class="ascii"><span class="down">WAAS(18) → SINGLE(16)</span></td><td>停止接收 SBAS 改正的时长超过 <code>SBASTIMEOUT</code>（auto 模式 = <b>180 s</b>）。</td><td>【M §2.134 P324】</td></tr>
+  <tr><td class="num">7</td><td class="ascii"><span class="up">伪距类 → L1_FLOAT(32)/NARROW_FLOAT(34)</span></td><td>载波相位观测可用、RTK 滤波器运行，但整周模糊度尚未固定（浮点估计）。</td><td>【M Table 74 P434】</td></tr>
+  <tr><td class="num">8</td><td class="ascii"><span class="up">*_FLOAT → WIDE_INT(49)</span></td><td>宽巷整周模糊度成功固定为整数。</td><td>【M Table 74 P434】</td></tr>
+  <tr><td class="num">9</td><td class="ascii"><span class="up">WIDE_INT(49) → NARROW_INT(50)</span></td><td>窄巷整周模糊度成功固定（RTK 最高精度状态）。</td><td>【M Table 74 P434】</td></tr>
+  <tr><td class="num">10</td><td class="ascii"><span class="down">NARROW_INT(50) → NARROW_FLOAT(34)</span></td><td><code>RTKINTEGERCRITERIA</code> 触发：固定解的估计标准差超过门限（默认 <code>TOTAL_STDDEV 1.0</code> m，如高 DOP 场景），强制改报浮点。</td><td>【M §2.120 P301–302】</td></tr>
+  <tr><td class="num">11</td><td class="ascii"><span class="down">RTK(INT/FLOAT) → PSRDIFF/SINGLE</span></td><td>RTK 数据龄期 &gt; <code>RTKTIMEOUT</code>（默认 <b>60 s</b>，范围 5–60 s；RTKASSIST 激活时此命令失效，由 <code>RTKASSISTTIMEOUT</code> 接管）；低延迟 RTK 对基站观测最多外推 <b>60 s</b>，超时后 BESTPOS 回退到最佳可用解。</td><td>【M §2.129 P315–316；§3.14 P430】</td></tr>
+  <tr><td class="num">12</td><td class="ascii"><span class="down">任意 → NONE(0)</span></td><td>观测丢失（遮挡、天线断开、干扰）导致无法构成任何解。</td><td>【M Table 74 P434】</td></tr>
+  <tr><td class="num">13</td><td class="ascii"><span class="side">任意 → PROPAGATED(19)</span></td><td>卡尔曼滤波器在没有新观测输入时进行时间推算（短期外推）。</td><td>【M Table 74 P434】</td></tr>
+  <tr><td class="num">14</td><td class="ascii"><span class="side">任意 → FIXEDPOS(1)</span></td><td>用户输入 <code>FIX POSITION</code>（或位置平均完成）：位置被固定为输入值。注意：对流动站施加 FIX POSITION 会使其退出 RTK 模式转为固定位置模式。</td><td>【M §2.47 P163–165】</td></tr>
+  <tr><td class="num">15</td><td class="ascii"><span class="side">任意 → FIXEDHEIGHT(2)</span></td><td>用户输入 <code>FIX HEIGHT</code> 或 <code>FIX AUTO</code>：高程固定，退化为 2-D 解（常用于船舶等高程近似恒定场景）。</td><td>【M §2.47 P163–165】</td></tr>
+  <tr><td class="num">16</td><td class="ascii"><span class="side">FIXEDPOS/FIXEDHEIGHT → 正常解算</span></td><td>用户输入 <code>FIX NONE</code> 解除固定，接收机恢复正常解算（从 SINGLE 重新爬坡）。</td><td>【M §2.47 Table 34 P165】</td></tr>
+  <tr><td class="num">17</td><td class="ascii"><span class="up">PPP_CONVERGING(68) → PPP(69)</span></td><td>TerraStar-C / C PRO / X 精密单点定位滤波器收敛完成。</td><td>【M Table 74 P435】</td></tr>
+  <tr><td class="num">18</td><td class="ascii"><span class="down">PPP(69) → PPP_CONVERGING(68)/更低</span></td><td>PPP 改正数龄期 &gt; <code>PPPTIMEOUT</code>（默认 <b>360 s</b>，范围 5–900 s），改正数不再被应用。</td><td>【M §2.103 P272】</td></tr>
+  <tr><td class="num">19</td><td class="ascii"><span class="up">PPP_BASIC_CONVERGING(77) → PPP_BASIC(78)</span></td><td>TerraStar-L 服务滤波器收敛完成。</td><td>【M Table 74 P435】</td></tr>
+  <tr><td class="num">20</td><td class="ascii"><span class="side">任意 → OPERATIONAL(70)/WARNING(71)/OUT_OF_BOUNDS(72)</span></td><td><code>UALCONTROL ENABLE</code> 后，BESTPOS/GPGGA 的类型不再按解的来源报告，而按标准差 σ 与用户门限比较：σ ≤ Operational 限值 → 70；Operational &lt; σ ≤ Warning → 71；σ &gt; Warning → 72。三者随 σ 变化逐级升/降。</td><td>【M §2.166 P374–375；Table 68】</td></tr>
+  <tr><td class="num">21</td><td class="ascii"><span class="side">主链任意级 → INS_* (51–56)</span></td><td>SPAN 系统（GNSS+INS）输出组合解，类型镜像底层 GNSS 等级：SBAS→52、单点→53、伪距差分→54、RTK 浮点→55、RTK 固定→56；RTK 滤波器由 INS 滤波器直接初始化时报告 51 RTK_DIRECT_INS。</td><td>【M Table 74 P434–435】</td></tr>
+  <tr><td class="num">22</td><td class="ascii"><span class="side">PPP 链 → INS_PPP*(73/74/79/80)</span></td><td>SPAN 系统下 INS 与 TerraStar-C/C PRO/X（73/74）或 TerraStar-L（79/80）的组合解，同样分收敛中/已收敛两级。</td><td>【M Table 74 P435】</td></tr>
+</table>
+</div>
+<div class="note"><b>注意：</b>北云协议原文只给出每个枚举值的一句话描述，<b>没有</b>给出任何进入/退出条件或超时数值。上表中的转移条件全部来自源头文档 OEM7 v11 手册（【M】标注章节与页码），是唯一权威的依据来源；卫星数 ≥4 这类行业公认常识标注为【V】。</div>
+
+<h2 id="inout">7. 进出条件汇总表：每个状态“怎么进、怎么出”</h2>
+<p>把上表按状态重新组织——每一行回答三个问题：<b>满足什么条件进入该状态？什么条件丢失/变化时退出？退出后去向哪里？</b></p>
+<div class="card">
+<table>
+  <tr><th style="width:170px">状态</th><th>进入条件</th><th>退出条件</th><th style="width:130px">典型去向</th></tr>
+  <tr><td class="ascii">NONE (0)</td><td>上电初始；或观测丢失导致无解。</td><td>锁定足够卫星、伪距观测充分。</td><td>SINGLE(16)</td></tr>
+  <tr><td class="ascii">FIXEDPOS (1)</td><td><code>FIX POSITION</code> 命令；或位置平均完成。</td><td><code>FIX NONE</code> 解除。</td><td>SINGLE(16)</td></tr>
+  <tr><td class="ascii">FIXEDHEIGHT (2)</td><td><code>FIX HEIGHT</code> / <code>FIX AUTO</code> 命令。</td><td><code>FIX NONE</code> 或 <code>FIX POSITION</code> 覆盖。</td><td>SINGLE(16)/FIXEDPOS(1)</td></tr>
+  <tr><td class="ascii">DOPPLER_VELOCITY (8)</td><td>仅作为速度类型出现：瞬时多普勒测速。</td><td>获得载波/滤波级速度解。</td><td>随位置类型同级</td></tr>
+  <tr><td class="ascii">SINGLE (16)</td><td>伪距解算成功（无差分/SBAS/载波增强）。</td><td>收到差分/SBAS 改正（升级）；观测丢失（降级）。</td><td>PSRDIFF(17)/WAAS(18)/NONE(0)</td></tr>
+  <tr><td class="ascii">PSRDIFF (17)</td><td>伪距差分改正有效（龄期 ≤ 300 s 默认）。</td><td>改正龄期 &gt; <code>PSRDIFFTIMEOUT</code>；或载波 RTK 滤波启动。</td><td>SINGLE(16) / *_FLOAT</td></tr>
+  <tr><td class="ascii">WAAS (18)</td><td>使用 SBAS 改正解算。</td><td>SBAS 中断 &gt; <code>SBASTIMEOUT</code>（auto=180 s）。</td><td>SINGLE(16)</td></tr>
+  <tr><td class="ascii">PROPAGATED (19)</td><td>卡尔曼滤波无新观测时推算。</td><td>新观测到达恢复解算；推算过久无解。</td><td>原解算级 / NONE(0)</td></tr>
+  <tr><td class="ascii">L1_FLOAT (32) / NARROW_FLOAT (34)</td><td>RTK 滤波运行、模糊度未固定；或固定解被 <code>RTKINTEGERCRITERIA</code> 降级。</td><td>模糊度固定（升级）；RTK 数据超时（降级）。</td><td>WIDE_INT(49) / PSRDIFF(17)</td></tr>
+  <tr><td class="ascii">WIDE_INT (49)</td><td>宽巷整周模糊度固定。</td><td>窄巷固定（升级）；RTK 数据超时/质量门限（降级）。</td><td>NARROW_INT(50) / *_FLOAT</td></tr>
+  <tr><td class="ascii">L1_INT (48) / NARROW_INT (50)</td><td>L1/窄巷整周模糊度固定（RTK 固定解）。</td><td>标准差超 <code>RTKINTEGERCRITERIA</code> 门限；RTK 龄期 &gt; 60 s。</td><td>NARROW_FLOAT(34) / PSRDIFF(17)</td></tr>
+  <tr><td class="ascii">RTK_DIRECT_INS (51)</td><td>SPAN 系统：RTK 滤波器由 INS 滤波器直接初始化。</td><td>转入常规 INS_RTK* 或 GNSS 降级。</td><td>INS_RTKFIXED(56) 等</td></tr>
+  <tr><td class="ascii">INS_SBAS(52) / INS_PSRSP(53) / INS_PSRDIFF(54) / INS_RTKFLOAT(55) / INS_RTKFIXED(56)</td><td>SPAN 组合导航输出，等级镜像底层 GNSS（SBAS/单点/伪距差分/RTK 浮点/RTK 固定）。</td><td>底层 GNSS 等级变化时随之升降。</td><td>同等级 INS 内部迁移</td></tr>
+  <tr><td class="ascii">PPP_CONVERGING (68)</td><td>TerraStar-C/C PRO/X 改正流接入、PPP 滤波启动。</td><td>滤波收敛（升级）；改正龄期 &gt; 360 s（降级）。</td><td>PPP(69) / SINGLE(16)</td></tr>
+  <tr><td class="ascii">PPP (69)</td><td>TerraStar-C/C PRO/X 滤波收敛完成。</td><td>改正龄期 &gt; <code>PPPTIMEOUT</code>（默认 360 s）。</td><td>PPP_CONVERGING(68)/更低</td></tr>
+  <tr><td class="ascii">OPERATIONAL (70) / WARNING (71) / OUT_OF_BOUNDS (72)</td><td><code>UALCONTROL ENABLE</code> 后按 σ 与门限比较自动落入对应级。</td><td>σ 改善/恶化时逐级迁移；<code>UALCONTROL DISABLE/CLEAR</code> 后恢复正常类型。</td><td>三者之间互转</td></tr>
+  <tr><td class="ascii">INS_PPP_CONVERGING (73) / INS_PPP (74)</td><td>SPAN：INS + TerraStar-C/C PRO/X 组合解（收敛中/已收敛）。</td><td>PPP 收敛状态变化或改正超时。</td><td>73 ↔ 74</td></tr>
+  <tr><td class="ascii">PPP_BASIC_CONVERGING (77) / PPP_BASIC (78)</td><td>TerraStar-L 改正流接入、滤波启动 / 收敛完成。</td><td>收敛状态变化；改正龄期 &gt; <code>PPPTIMEOUT</code>。</td><td>77 ↔ 78</td></tr>
+  <tr><td class="ascii">INS_PPP_BASIC_CONVERGING (79) / INS_PPP_BASIC (80)</td><td>SPAN：INS + TerraStar-L 组合解（收敛中/已收敛）。</td><td>同上。</td><td>79 ↔ 80</td></tr>
+</table>
+</div>
+
+<h2 id="related">8. 与表 4-1（解算状态）、表 4-3（扩展解算状态）及 NMEA 的关系</h2>
+<div class="card">
+  <h3>8.1 与表 4-1（sol stat 解算状态）的分工</h3>
+  <p>两个字段成对出现在同一条位置消息中（如 BESTPOS 的第 2、3 字段），回答的是两个不同的问题：</p>
+  <table>
+    <tr><th style="width:150px">字段</th><th>回答的问题</th><th>取值特点</th></tr>
+    <tr><td class="ascii">sol stat（表 4-1）</td><td>“这次解算<b>健不健康</b>？”——解算过程的结果诊断。</td><td>SOL_COMPUTED(0)=完全解算；其余 21 个值全是<b>异常/受限</b>原因。</td></tr>
+    <tr><td class="ascii">pos type（表 4-2）</td><td>“输出的坐标是<b>用什么方法</b>算出来的？”——解的来源与精度等级。</td><td>从 NONE 到 NARROW_INT 的精度阶梯。</td></tr>
+  </table>
+  <p>组合判读规则：只有 <code>sol stat = SOL_COMPUTED(0)</code> 时，<code>pos type</code> 报告的精度等级才真实有效；若 sol stat 非 0（如 INSUFFICIENT_OBS、RESIDUALS），即便 pos type 仍显示某等级，也应以 sol stat 的告警为准（此时 pos type 多为 NONE 或保持上一拍结果）。FIX 命令特有的联动：输入 FIX 位置后，sol stat 用 SOL_COMPUTED / PENDING / INTEGRITY_WARNING / INVALID_FIX 四级报告对该固定位置的完好性校验结果（OEM7 明确：输入位置偏差约 25–50 m 报 INTEGRITY_WARNING，严重偏差报 INVALID_FIX，并停止差分改正输出）【M §2.47 P163–164；Table 73 P433】。</p>
+
+  <h3>8.2 与表 4-3（扩展解算状态）的印证</h3>
+  <p>表 4-3 的 bit 位为 pos type 提供旁证：</p>
+  <table>
+    <tr><th style="width:130px">表 4-3 位</th><th>含义</th><th>配合表 4-2 的用法</th></tr>
+    <tr><td class="num">bit0 = 0x01</td><td>RTK 解：修正方案<b>已确认</b>（verified）</td><td>pos type = 48/49/50 时，bit0 置位表示该固定解已经过验证，可信度更高。</td></tr>
+    <tr><td class="num">bit1–3 = 0x0E</td><td>伪距电离层修正来源（Klobuchar/SBAS/多频/伪距差分/混合）</td><td>解释 SINGLE/PSRDIFF/WAAS 各解所用的电离层模型。</td></tr>
+    <tr><td class="num">bit4 = 0x10</td><td>RTKASSIST 激活（RTK 辅助使能）</td><td>置位时 RTK 中断后的保持时长由 <code>RTKASSISTTIMEOUT</code> 而非 <code>RTKTIMEOUT</code> 控制【M §2.129 P315–316】。</td></tr>
+    <tr><td class="num">bit5 = 0x20</td><td>天线信息缺失告警</td><td>配合 <code>RTKANTENNA</code> 命令排查基站天线配置问题。</td></tr>
+  </table>
+
+  <h3>8.3 与 NMEA GPGGA 质量指示的官方映射【M Table 98 P513；Table 78 P437；Table 68 P375】</h3>
+  <p>OEM7 v11 手册用两张表给出了 pos type → NMEA GGA 质量指示的<b>官方</b>对应关系（不再是近似推断）：</p>
+  <table>
+    <tr><th style="width:70px">GGA 质量</th><th>OEM7 Table 98 官方含义</th><th>对应的本表 pos type</th></tr>
+    <tr><td class="num">0</td><td>Fix not available or invalid（定位不可用或无效）</td><td>NONE (0)</td></tr>
+    <tr><td class="num">1</td><td>Single point；Converging PPP (TerraStar-L)</td><td>SINGLE (16)、PPP_BASIC_CONVERGING (77)、OUT_OF_BOUNDS (72)</td></tr>
+    <tr><td class="num">2</td><td>Pseudorange differential；Converged PPP (TerraStar-L)；Converging PPP (TerraStar-C/C PRO/X)</td><td>PSRDIFF (17)、PPP_BASIC (78)、PPP_CONVERGING (68)</td></tr>
+    <tr><td class="num">4</td><td>RTK fixed ambiguity solution（RTK 固定解）</td><td>L1_INT (48)、WIDE_INT (49)、NARROW_INT (50)、OPERATIONAL (70)</td></tr>
+    <tr><td class="num">5</td><td>RTK floating ambiguity solution；Converged PPP (TerraStar-C/C PRO/X)</td><td>L1_FLOAT (32)、NARROW_FLOAT (34)、PPP (69)、WARNING (71)</td></tr>
+    <tr><td class="num">6</td><td>Dead reckoning mode（航位推算模式）</td><td>INS 组合类（51–56、73/74、79/80）输出时的典型指示【V】</td></tr>
+    <tr><td class="num">7</td><td>Manual input mode (fixed position)（手动输入固定位置）</td><td>FIXEDPOS (1) / FIXEDHEIGHT (2)</td></tr>
+    <tr><td class="num">8</td><td>Simulator mode（模拟器模式）</td><td>—（仿真场景）</td></tr>
+    <tr><td class="num">9</td><td>WAAS (SBAS)（NMEA 标准未定，OEM7 暂定为 9，可用 <code>GGAQUALITY</code> 命令自定义）</td><td>WAAS (18)</td></tr>
+  </table>
+  <p class="sub">注：Table 78（P437）对补充类型的逐项映射为 68→2、69→5、70→4、71→5、72→1、77→1、78→2；Table 68（P375）对 UAL 类型给出相同映射（70→4、71→5、72→1）。同一 GGA 指示可对应多个 pos type（如 5 同时覆盖 RTK 浮点与已收敛 PPP），因此<b>反查时必须读 BESTPOS 的 pos type 字段而不能只看 GGA 质量位</b>。</p>
+</div>
+
+<h2 id="oem7diff">9. 与 OEM7 v11 Table 74 的逐条对比核对</h2>
+<p>北云表 4-2 与源头文档 OEM7 v11《Commands and Logs Reference Manual》Table 74《Position or Velocity Type》（P434–435）逐条核对的结果如下。<b>绝大多数条目完全一致</b>，差异集中在 5 处，均已按下表处理，无任何猜测：</p>
+<div class="card">
+<table>
+  <tr><th style="width:56px">值</th><th style="width:200px">北云表 4-2 原文</th><th style="width:220px">OEM7 v11 Table 74 原文</th><th>结论与处理</th></tr>
+  <tr><td class="num">4 / 5 / 6</td><td>FLOATCONV 浮点载波相位模糊解 / WIDELANE 宽巷模糊解 / NARROWLANE 窄巷模糊解</td><td>未列出（3–7 整体标注 Reserved）</td><td>北云保留了 OEM 早期版本（OEM6 时代）的旧定义，v11 已将这些值归入 Reserved。本文档按北云协议保留这三个条目并注明来源差异，实际工程中 OEM7 v11 设备不会输出 4/5/6。</td></tr>
+  <tr><td class="num">33</td><td>IONOFREE_FLOAT 无电离层浮点解</td><td>33 Reserved</td><td>同为北云保留的旧定义（v11 已 Reserved）。处理同上。</td></tr>
+  <tr><td class="num">51</td><td>RTK_DIRECT_INS：RTK 状态，其中 RTK 直接通过 INS 初始化</td><td>RTK status where the RTK filter is directly initialized from the INS filter</td><td><b>完全一致</b>，无差异。</td></tr>
+  <tr><td class="num">68 / 69 / 73 / 74</td><td>描述仅提及 TerraStar-C</td><td>Converging/Converged <b>TerraStar-C, TerraStar-C PRO or TerraStar-X</b> solution</td><td>OEM7 描述覆盖三种服务（C / C PRO / X），北云只写了 TerraStar-C。本文档以 OEM7 更完整的描述为准（【M】优先原则），已在上文各处补全。</td></tr>
+  <tr><td class="num">79 / 80</td><td>INS_PPP<b>P</b>_BASIC_Converging / INS_PPP<b>P</b>_BASIC（“PPP”写成三个 P）</td><td>INS_PPP_BASIC_CONVERGING / INS_PPP_BASIC（两个 P）</td><td><b>北云协议笔误</b>，ASCII 名多出第三个 P。本文档以 OEM7 v11 为准修正为 INS_PPP_BASIC_CONVERGING / INS_PPP_BASIC；二进制值 79/80 不受影响。</td></tr>
+  <tr><td class="num">其余全部条目</td><td colspan="2">0–2、8、16–19、32、34、48–50、52–56、70–72、77–78 及各 Reserved 区间</td><td><b>逐字一致</b>（仅中英文表述差异）。</td></tr>
+</table>
+</div>
+<div class="note"><b>为什么北云表会保留 4/5/6/33 这些 v11 已 Reserved 的值？</b>——依据文档本身无法回答（两本文档都没有说明原因），本文档不做推测。工程上的安全做法是：解析程序对 4/5/6/33 做好兼容（按北云定义识别浮点类解），对新固件则按 v11 将它们视为预留。</div>
+
+<h2 id="faq">10. 常见问题（FAQ）</h2>
+<div class="card">
+  <h3>Q1：为什么我的 RTK 固定解（NARROW_INT 50）突然掉成了浮点（NARROW_FLOAT 34）？</h3>
+  <p>按 OEM7 v11 只有三类官方原因：① 差分链路中断，RTK 数据龄期超过 <code>RTKTIMEOUT</code>（默认 60 s）【M §2.129】；② 低延迟 RTK 对基站观测的外推达到 60 s 上限，BESTPOS 回退到最佳可用解【M §3.14 P430】；③ <code>RTKINTEGERCRITERIA</code> 门限触发——固定解的估计标准差超过门限（默认总标准差 1.0 m，典型如高 DOP 的几何构型），接收机主动把固定解改报为浮点【M §2.120】。排查时先看差分龄期字段，再看标准差字段，即可区分是“断链”还是“质量门限”。</p>
+
+  <h3>Q2：pos type 显示固定解，但表 4-1 的 sol stat 不是 SOL_COMPUTED，该信哪个？</h3>
+  <p>信 sol stat。表 4-1 是解算过程的诊断（这次解算健不健康），表 4-2 只是报告解的来源类型。sol stat 非 0 说明本次解算存在异常原因（观测量不足、残差过大、协方差超限等），此时 pos type 多为 NONE 或保持上一拍结果，不应作为有效定位使用。</p>
+
+  <h3>Q3：68/69 和 77/78 都是 PPP，有什么区别？</h3>
+  <p>按 OEM7 v11 Table 74：68/69 对应 <b>TerraStar-C / C PRO / X</b> 服务（收敛中/已收敛），77/78 对应 <b>TerraStar-L</b> 服务（收敛中/已收敛）。北云协议对 68/69/73/74 只写了 TerraStar-C，属描述不全，本文档已按 OEM7 补全。两组在 NMEA GGA 中的映射也不同：77→1、78→2，而 68→2、69→5【M Table 78 P437】。</p>
+
+  <h3>Q4：为什么 BESTPOS 里会出现 70/71/72 这种不像“定位方法”的值？</h3>
+  <p>因为执行了 <code>UALCONTROL ENABLE</code>。该命令让 BESTPOS/GPGGA 的类型字段不再报告解的来源，而是报告用户自定义精度等级：σ ≤ Operational 限值报 OPERATIONAL(70)，介于两门限之间报 WARNING(71)，超过 Warning 限值报 OUT_OF_BOUNDS(72)。典型应用是农业自动驾驶：转向系统只认 GGA 质量 4（RTK 固定），RTK 中断会导致脱开；配合 STEADYLINE/GLIDE 维持固定级精度、再用 UALCONTROL 保证类型输出不中断【M §2.166 P374–375】。<code>UALCONTROL DISABLE</code> 或 <code>CLEAR</code> 后恢复正常的来源类型。</p>
+
+  <h3>Q5：北云表里 79/80 的 ASCII 名“INS_PPPP_BASIC*”是不是写错了？</h3>
+  <p>是笔误。OEM7 v11 Table 74 中对应条目为 INS_PPP_BASIC_CONVERGING(79) 与 INS_PPP_BASIC(80)（“PPP”为两个 P）。北云协议写成了三个 P（INS_PPPP_BASIC*）。二进制值 79/80 本身没有问题，仅 ASCII 名多出一个 P，本文档已按 OEM7 修正。</p>
+
+  <h3>Q6：解析程序要不要处理 4/5/6（FLOATCONV/WIDELANE/NARROWLANE）和 33（IONOFREE_FLOAT）？</h3>
+  <p>建议兼容处理。这四个值在北云协议中有明确定义（均属浮点类解），但 OEM7 v11 Table 74 已将其标注为 Reserved。稳妥做法：按北云定义识别并归入“浮点解”档（与 32/34 同级对待），同时做好 Reserved 兜底——遇到任何未识别值应按“未知/预留”处理而不是当作 NONE。</p>
+
+  <h3>Q7：PROPAGATED(19) 和 INS 组合解（52–56）有什么区别？</h3>
+  <p>PROPAGATED 是<b>纯 GNSS</b> 卡尔曼滤波在没有新观测时的时间推算（短期外推，无惯性器件参与）；INS_* 是 <b>SPAN 组合导航系统</b>（GNSS+IMU）的输出，有惯性器件持续递推，等级镜像底层 GNSS 解算状态。前者是 GNSS 接收机单机行为，后者需要 SPAN/INS 硬件配置【M Table 74 P434–435；§3.14 P430】。</p>
+</div>
+
+<footer>
+  <p><b>参考文档（按优先级排序）：</b></p>
+  <p>1. 《UG016 数据通信接口协议》（北云科技）表 4-2《定位状态描述说明》，第 65–66 页 —— 本表枚举值的原始出处。<br>
+  2. 《OEM7 Commands and Logs Reference Manual v11》（NovAtel）—— 北云协议参数与原理的源头文档，引用位置：Table 74《Position or Velocity Type》P434–435；Table 73《Solution Status》P433；Table 78《Supplemental Position Types and NMEA Equivalents》P437；Table 98《GPS Quality Indicators》P513；Table 68《User Accuracy Level Supplemental Position Types and NMEA Equivalents》P375；§2.47 FIX P163–165；§2.103 PPPTIMEOUT P272；§2.109 PSRDIFFTIMEOUT P285；§2.120 RTKINTEGERCRITERIA P301–302；§2.129 RTKTIMEOUT P315–316；§2.134 SBASTIMEOUT P324；§2.166 UALCONTROL P374–375；§3.14 BESTPOS P429–430。<br>
+  3. 编写原则：枚举值与描述照录协议原文及 OEM7 v11 手册；所有进入/退出/恢复条件均以 <span class="src">M</span>（OEM7 手册）/ <span class="src">V</span>（行业公认常识）标注出处；文档未说明的内容（如北云保留旧值的成因）明确标注“不做推测”，未引用任何无依据的推断。</p>
+</footer>
+
+</div>
+</body>
+</html>

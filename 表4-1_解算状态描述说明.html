@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>表 4-1 解算状态描述说明 · 全方位解读</title>
+<style>
+  :root{
+    --c-none:#9aa0a6;   /* 无解/配置 */
+    --c-blue:#4a90d9;   /* 启动/观测类 */
+    --c-orange:#e8963c; /* 质量拒绝类 */
+    --c-green:#43a567;  /* 有效解 */
+    --c-purple:#8e6fc0; /* FIX验证 */
+    --c-red:#d9634f;    /* 失败/告警 */
+    --ink:#1f2329; --sub:#5f6368; --line:#e5e7eb; --bg:#f5f6f8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+       font-size:14px;line-height:1.75}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 60px}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:28px 0 20px;margin-bottom:8px}
+  header .wrap{padding-bottom:0}
+  h1{font-size:24px;margin:0 0 6px}
+  h2{font-size:18px;margin:34px 0 12px;padding-left:10px;border-left:4px solid var(--c-green)}
+  h3{font-size:15px;margin:18px 0 8px}
+  p{margin:8px 0}
+  code{background:#eef1f4;padding:1px 6px;border-radius:4px;font-size:12.5px;
+       font-family:"SF Mono",Menlo,Consolas,monospace}
+  .sub{color:var(--sub);font-size:13px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:14px 0}
+  .note{background:#eef7ee;border:1px solid #9ed3a8;border-radius:10px;padding:14px 18px;margin:14px 0}
+  .note b{color:#2a6e3f}
+  .warn{background:#fff8e6;border:1px solid #f0d88a;border-radius:10px;padding:14px 18px;margin:14px 0}
+  .warn b{color:#8a6d1a}
+  nav.toc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:14px 0;
+          font-size:13px;display:flex;flex-wrap:wrap;gap:6px 16px}
+  nav.toc a{color:#2b6cb0;text-decoration:none}
+  nav.toc a:hover{text-decoration:underline}
+  table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f0f2f5;font-weight:600;white-space:nowrap}
+  td.num{font-family:"SF Mono",Menlo,Consolas,monospace;white-space:nowrap}
+  td.ascii{font-family:"SF Mono",Menlo,Consolas,monospace;font-weight:600;white-space:nowrap}
+  .tag{display:inline-block;padding:0 8px;border-radius:10px;font-size:11px;color:#fff;white-space:nowrap}
+  .t-none{background:var(--c-none)} .t-blue{background:var(--c-blue)} .t-orange{background:var(--c-orange)}
+  .t-green{background:var(--c-green)} .t-purple{background:var(--c-purple)} .t-red{background:var(--c-red)}
+  tr.rsv td{color:#b0b4ba;background:#fafbfc}
+  .src{display:inline-block;background:#e8f0fb;color:#1a5fb4;border-radius:4px;padding:0 5px;
+       font-size:11px;font-weight:700;font-family:"SF Mono",Menlo,Consolas,monospace}
+  .grp{border:1px solid var(--line);border-left-width:5px;border-radius:8px;padding:12px 16px;margin:12px 0;background:#fff}
+  .grp h3{margin-top:0}
+  .kv{display:grid;grid-template-columns:88px 1fr;gap:2px 12px;font-size:13px;margin-top:6px}
+  .kv dt{color:var(--sub);white-space:nowrap}
+  .kv dd{margin:0}
+  .gl-none{border-left-color:var(--c-none)} .gl-blue{border-left-color:var(--c-blue)}
+  .gl-orange{border-left-color:var(--c-orange)} .gl-green{border-left-color:var(--c-green)}
+  .gl-purple{border-left-color:var(--c-purple)} .gl-red{border-left-color:var(--c-red)}
+  .figwrap{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;overflow-x:auto}
+  .up{color:var(--c-green);font-weight:600}.down{color:var(--c-red);font-weight:600}
+  .side{color:#2b6cb0;font-weight:600}
+  footer{color:var(--sub);font-size:12px;border-top:1px solid var(--line);margin-top:36px;padding-top:14px}
+  footer a{color:#2b6cb0;word-break:break-all}
+  /* SVG 状态机图 */
+  .r-none{fill:#f2f3f5;stroke:#9aa0a6;stroke-width:2}
+  .r-blue{fill:#eaf3fc;stroke:#4a90d9;stroke-width:2}
+  .r-orange{fill:#fdf2e2;stroke:#e8963c;stroke-width:2}
+  .r-green{fill:#e9f7ee;stroke:#43a567;stroke-width:2}
+  .r-purple{fill:#f1ecf9;stroke:#8e6fc0;stroke-width:2}
+  .r-red{fill:#fbeae7;stroke:#d9634f;stroke-width:2}
+  .r-note{fill:#fbfbfd;stroke:#9aa0a6;stroke-width:1.5;stroke-dasharray:4 3}
+  .t1{font-size:11px;font-weight:700;fill:#1f2329;font-family:"SF Mono",Menlo,Consolas,monospace}
+  .t2{font-size:9.5px;fill:#5f6368}
+  .st{font-size:13px;font-weight:700;fill:#333}
+  .sn{font-size:10px;fill:#777}
+  .nl{font-size:9.5px;font-weight:700;fill:#444;paint-order:stroke;stroke:#fff;stroke-width:3px}
+  .af{stroke:#43a567;stroke-width:1.6;fill:none}
+  .ab{stroke:#d9634f;stroke-width:1.5;stroke-dasharray:5 3;fill:none}
+  .am{stroke:#9aa0a6;stroke-width:1.4;stroke-dasharray:4 3;fill:none}
+  .ap{stroke:#8e6fc0;stroke-width:1.6;fill:none}
+  .bus{stroke:#c9cdd3;stroke-width:3;fill:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>表 4-1《解算状态描述说明》全方位解读</h1>
+    <p class="sub">来源：《UG016 数据通信接口协议》（北云科技）第 64–65 页 · 适用于 BESTPOS / BESTGNSSPOS / BESTUTM / BESTGNSSVEL / HEADING 等消息中的
+      <code>sol stat</code>（解算状态）字段 · 所有进入/退出条件均标注权威出处，不含推测 · 已与源头文档《OEM7 Commands and Logs Reference Manual v11》逐条核对</p>
+  </div>
+</header>
+<div class="wrap">
+
+<nav class="toc">
+  <span>目录：</span>
+  <a href="#premise">阅读前提与出处</a>
+  <a href="#core">核心结论</a>
+  <a href="#fulltable">完整速查表</a>
+  <a href="#groups">分组详解</a>
+  <a href="#diagram">状态机跳转图</a>
+  <a href="#transitions">转移条件对照表</a>
+  <a href="#inout">进出条件汇总表</a>
+  <a href="#related">与表 4-2 的关系</a>
+  <a href="#oem7diff">OEM7 对比</a>
+  <a href="#refs">参考资料</a>
+</nav>
+
+<h2 id="premise">0. 阅读前提与出处图例</h2>
+<div class="warn">
+  <p><b>① 出处图例：本文每一条进入/退出/恢复条件都带有出处标签</b>，没有官方依据的一律不写：</p>
+  <p>
+    <span class="src">M</span> 《OEM7 Commands and Logs Reference Manual v11》（本地 <code>OEM7_Commands_Logs_Manual.pdf</code>，北云协议的源头文档，<b>优先级最高</b>）：北云表 4-1 与其 Table 73（P432–433）逐值一致，引用均标注手册页码 &nbsp;
+    <span class="src">P</span> UG016 协议原文（表 4-1，P64–65）&nbsp;
+    <span class="src">N</span> NovAtel 在线文档 docs.novatel.com《BESTPOS》（较新版本；含 v11 之后补充的内容）&nbsp;
+    <span class="src">V</span> NovAtel《OEMV Family Firmware Reference Manual》&nbsp;
+    <span class="src">C</span> 行业公开记载的 COCOM 出口管制限值 &nbsp;
+    <span class="src">T</span> 卫星导航教科书事实（OEM7 手册同述）
+  </p>
+  <p><b>② 这张表是什么：</b><code>sol stat</code> 是解算引擎对<b>当前这一历元</b>解算结果的健康度标注，逐历元上报。它不是定位精度的档位（那是表 4-2 <code>pos type</code> 的职责），而是回答：<b>“这次算出来的解能不能用？不能用的原因是什么？”</b></p>
+  <p><b>③ 与 OEM6 的差异（如实说明）：</b>OEM6 时代 10/11/14–17 曾有定义（DELTA_POS、NEGATIVE_VAR、INS_INACTIVE 等），但 UG016、OEM7 v11 手册与 NovAtel 在线文档均将这些值列为<b>预留</b>。本文以 UG016 协议与 OEM7 v11 手册为准。<span class="src">P</span><span class="src">M</span></p>
+</div>
+
+<h2 id="core">1. 核心结论（官方原文）</h2>
+<div class="note">
+  <p><b>“只有当解算状态为 SOL_COMPUTED 时，输出的解才应被视为有效。”</b><br>
+  原文：<i>The output solution should be considered valid only when the solution status reports SOL_COMPUTED.</i> <span class="src">N</span></p>
+  <p class="sub">版本说明：该句出自 NovAtel 在线文档（较新版本）【N】；本地 OEM7 v11 手册 Table 73 未收录此句，但其 FIX 命令完整性检查流程（§2.47，P163）体现了同一原则——只有通过测量验证的解才会被标记 SOL_COMPUTED【M】。</p>
+  <p>因此表 4-1 的全部 13 个有效取值可以分成五类来理解：</p>
+  <table>
+    <tr><th style="width:170px">类别</th><th>包含状态</th><th>含义</th></tr>
+    <tr><td><span class="tag t-green">有效解</span></td><td>SOL_COMPUTED (0)</td><td>唯一“解有效”状态，所有质量检查通过</td></tr>
+    <tr><td><span class="tag t-blue">启动过程</span></td><td>COLD_START (6)</td><td>冷启动后滤波器尚未收敛，属正常过渡</td></tr>
+    <tr><td><span class="tag t-blue">解算失败</span></td><td>INSUFFICIENT_OBS (1) / NO_CONVERGENCE (2) / SINGULARITY (3)</td><td>观测量、收敛性、矩阵条件不满足，本历元没算出可靠解</td></tr>
+    <tr><td><span class="tag t-orange">质量门限拒绝</span></td><td>COV_TRACE (4) / TEST_DIST (5) / V_H_LIMIT (7) / VARIANCE (8) / RESIDUALS (9) / INTEGRITY_WARNING (13)</td><td>解算完成了，但未通过某项质量检验（协方差/距离/高度速度/方差/残差），条件消除即恢复</td></tr>
+    <tr><td><span class="tag t-purple">FIX 命令验证</span></td><td>PENDING (18) / INVALID_FIX (19)</td><td>用户输入 FIX 位置后，接收机对固定坐标的验证流程状态</td></tr>
+    <tr><td><span class="tag t-none">配置类</span></td><td>UNAUTHORIZED (20) / INVALID_RATE (22)</td><td>请求的定位类型未授权、或输出速率超出支持范围，非动态流转</td></tr>
+  </table>
+</div>
+
+<h2 id="fulltable">2. 完整速查表（协议全部取值，含官方描述与出处）</h2>
+<div class="card">
+<table>
+  <tr><th>数值</th><th>ASCII 值</th><th>协议原文描述 <span class="src">P</span></th><th>官方英文描述 <span class="src">M</span><span class="src">N</span></th><th>类别</th><th>进入条件（出处）</th><th>退出/恢复条件（出处）</th></tr>
+  <tr><td class="num">0</td><td class="ascii">SOL_COMPUTED</td><td>完全解算</td><td>Solution computed；且只有此状态时输出解才应视为有效（在线新版）</td><td><span class="tag t-green">有效解</span></td><td>解算收敛且各项质量检查通过 <span class="src">P</span><span class="src">M</span></td><td>唯一“正常态”，其余状态都是相对它的偏离</td></tr>
+  <tr><td class="num">1</td><td class="ascii">INSUFFICIENT_OBS</td><td>观测量不足</td><td>Insufficient observations</td><td><span class="tag t-blue">解算失败</span></td><td>可用观测少于解算需求。PVT 需解 4 个未知量（纬度/经度/高程/接收机钟差，OEM7 P429 同述），故定位至少需 4 颗卫星 <span class="src">P</span><span class="src">M</span><span class="src">T</span></td><td>跟踪卫星数恢复后自动回 SOL_COMPUTED（逐历元判定）<span class="src">M</span></td></tr>
+  <tr><td class="num">2</td><td class="ascii">NO_CONVERGENCE</td><td>不收敛</td><td>No convergence</td><td><span class="tag t-blue">解算失败</span></td><td>滤波/迭代解算未收敛 <span class="src">P</span><span class="src">M</span></td><td>收敛后恢复 <span class="src">M</span></td></tr>
+  <tr><td class="num">3</td><td class="ascii">SINGULARITY</td><td>参数矩阵异常</td><td>Singularity at parameters matrix</td><td><span class="tag t-blue">解算失败</span></td><td>参数矩阵出现奇异（官方描述即矩阵奇异性）<span class="src">P</span><span class="src">M</span></td><td>矩阵条件恢复后 <span class="src">M</span></td></tr>
+  <tr><td class="num">4</td><td class="ascii">COV_TRACE</td><td>协方差超过最大值（&gt;1000米）</td><td>Covariance trace exceeds maximum (trace &gt; 1000 m)</td><td><span class="tag t-orange">质量拒绝</span></td><td>位置协方差迹 &gt; 1000 m（官方明确门限）<span class="src">P</span><span class="src">M</span></td><td>协方差迹回落至门限内 <span class="src">M</span></td></tr>
+  <tr><td class="num">5</td><td class="ascii">TEST_DIST</td><td>测试距离超限（距离10km，最多丢弃3次）</td><td>Test distance exceeded (maximum of 3 rejections if distance &gt;10 km)</td><td><span class="tag t-orange">质量拒绝</span></td><td>新解与当前位置的距离 &gt; 10 km，被判为异常而拒绝 <span class="src">P</span><span class="src">M</span></td><td>官方原文：此类拒绝“最多 3 次”（maximum of 3 rejections）<span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">6</td><td class="ascii">COLD_START</td><td>冷启动尚未完全解算</td><td>Not yet converged from cold start</td><td><span class="tag t-blue">启动过程</span></td><td>冷启动之后、滤波器完成首次收敛之前 <span class="src">P</span><span class="src">M</span></td><td>收敛完成 → SOL_COMPUTED <span class="src">M</span></td></tr>
+  <tr><td class="num">7</td><td class="ascii">V_H_LIMIT</td><td>高度或速度超过限值</td><td>Height or velocity limits exceeded (in accordance with export licensing restrictions)</td><td><span class="tag t-orange">质量拒绝</span></td><td>高度或速度超过出口管制限值；行业公开记载的 COCOM 限值为高度约 18 km、速度约 1000 节（515 m/s）<span class="src">P</span><span class="src">M</span><span class="src">C</span></td><td>高度/速度回落至限值内 <span class="src">M</span><span class="src">C</span></td></tr>
+  <tr><td class="num">8</td><td class="ascii">VARIANCE</td><td>方差超过限值</td><td>Variance exceeds limits</td><td><span class="tag t-orange">质量拒绝</span></td><td>解的方差超过限值 <span class="src">P</span><span class="src">M</span></td><td>方差回落至限值内 <span class="src">M</span></td></tr>
+  <tr><td class="num">9</td><td class="ascii">RESIDUALS</td><td>残差过大</td><td>Residuals are too large</td><td><span class="tag t-orange">质量拒绝</span></td><td>观测残差超过门限 <span class="src">P</span><span class="src">M</span></td><td>残差恢复后 <span class="src">M</span></td></tr>
+  <tr class="rsv"><td class="num">10-12</td><td class="ascii">Reserved</td><td>预留</td><td>Reserved</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td class="num">13</td><td class="ascii">INTEGRITY_WARNING</td><td>残差过大使定位不可靠</td><td>Large residuals make position unreliable</td><td><span class="tag t-orange">质量拒绝</span></td><td>残差大到定位结果不可靠（程度重于 9 RESIDUALS，对照官方措辞）；另在 FIX 验证流程中表示固定位置偏差约 25–50 m 的一级错误【M §2.47】<span class="src">P</span><span class="src">M</span></td><td>残差恢复后 <span class="src">M</span></td></tr>
+  <tr class="rsv"><td class="num">14-17</td><td class="ascii">Reserved</td><td>预留</td><td>Reserved</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td class="num">18</td><td class="ascii">PENDING</td><td colspan="2">输入 FIX 位置命令后，接收机计算自身位置并确定固定位置是否有效；PENDING 表示当前跟踪卫星数不足以验证；正常情况下锁定最初几颗星之前仅维持数秒；若天线未连接或受遮挡且已输入 FIX 命令，该状态将持续输出 <span class="src">P</span><span class="src">M</span>。NovAtel 在线新版补充：PPP seed 验证期间也会触发 PENDING <span class="src">N</span></td><td><span class="tag t-purple">FIX验证</span></td><td>① 用户输入 FIX POSITION 命令，进入验证期 <span class="src">P</span><span class="src">M</span>；② PPP seed 验证中（仅在线新版记载）<span class="src">N</span></td><td>验证需跟踪 ≥2 颗卫星 <span class="src">V</span>；验证通过 → SOL_COMPUTED（pos type=FIXEDPOS）；验证失败 → INTEGRITY_WARNING（偏差约 25–50 m）/ INVALID_FIX（严重偏差）<span class="src">P</span><span class="src">M</span><span class="src">V</span></td></tr>
+  <tr><td class="num">19</td><td class="ascii">INVALID_FIX</td><td>使用FIX位置命令输入的位置无效</td><td>The fixed position, entered using the FIX position command, is not valid；FIX 验证中的二级错误（位置严重偏差）【M §2.47】</td><td><span class="tag t-purple">FIX验证</span></td><td>PENDING 验证判定输入的固定位置无效 <span class="src">P</span><span class="src">M</span></td><td>修正后重新输入 FIX 命令再次验证 <span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">20</td><td class="ascii">UNAUTHORIZED</td><td>定位类型未经授权</td><td>Position type is unauthorized</td><td><span class="tag t-none">配置类</span></td><td>请求的定位类型超出设备授权范围 <span class="src">P</span><span class="src">M</span></td><td>更正配置或授权后恢复 <span class="src">P</span><span class="src">M</span></td></tr>
+  <tr class="rsv"><td class="num">21</td><td class="ascii">Reserved</td><td>预留</td><td>Reserved</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td class="num">22</td><td class="ascii">INVALID_RATE</td><td>此解决方案类型不支持所选的输出速率</td><td>The selected logging rate is not supported for this solution type</td><td><span class="tag t-none">配置类</span></td><td>输出速率超出该解算类型支持范围；OEM7 P430 记载各模式最大输出率：RTK 100 Hz、伪距定位 100 Hz、GLIDE(PDP) 20 Hz、PPP 20 Hz <span class="src">P</span><span class="src">M</span></td><td>将输出率降至支持范围内 <span class="src">M</span></td></tr>
+</table>
+</div>
+
+<h2 id="groups">3. 分组详解（进入/退出条件均有出处）</h2>
+
+<div class="grp gl-green">
+  <h3>Ⓐ 有效解：SOL_COMPUTED(0)</h3>
+  <dl class="kv">
+    <dt>官方定义</dt><dd>Solution computed——完全解算。NovAtel 在线文档明确：<b>只有 sol stat = SOL_COMPUTED 时，输出解才应视为有效</b>。<span class="src">P</span><span class="src">M</span><span class="src">N</span></dd>
+    <dt>进入条件</dt><dd>解算收敛且协方差、距离检验、方差、残差等质量检查全部通过。<span class="src">M</span></dd>
+    <dt>退出条件</dt><dd>任一质量检查失败（转入对应原因码），或观测量不足/不收敛/矩阵奇异（转入解算失败码）。<span class="src">M</span></dd>
+  </dl>
+</div>
+
+<div class="grp gl-blue">
+  <h3>Ⓑ 启动与解算失败：COLD_START(6) / INSUFFICIENT_OBS(1) / NO_CONVERGENCE(2) / SINGULARITY(3)</h3>
+  <dl class="kv">
+    <dt>官方定义</dt><dd>COLD_START：冷启动后尚未收敛（Not yet converged from cold start）；INSUFFICIENT_OBS：观测量不足；NO_CONVERGENCE：不收敛；SINGULARITY：参数矩阵奇异。<span class="src">P</span><span class="src">M</span></dd>
+    <dt>进入条件</dt><dd>COLD_START：冷启动（无先验位置/星历）后的初始收敛阶段；INSUFFICIENT_OBS：可用观测不足——PVT 解算含 4 个未知量（纬度、经度、高程、接收机钟差，OEM7 P429 同述），故定位至少需 4 颗卫星；NO_CONVERGENCE：迭代未收敛；SINGULARITY：参数矩阵奇异。<span class="src">P</span><span class="src">M</span><span class="src">T</span></dd>
+    <dt>退出条件</dt><dd>逐历元判定：COLD_START 收敛完成后转 SOL_COMPUTED；卫星数/几何恢复、迭代收敛、矩阵条件恢复后，均自动回到 SOL_COMPUTED。<span class="src">M</span></dd>
+    <dt>典型场景</dt><dd>上电头几秒依次出现 COLD_START →（可能闪一下 INSUFFICIENT_OBS）→ SOL_COMPUTED，属正常启动序列。</dd>
+  </dl>
+</div>
+
+<div class="grp gl-orange">
+  <h3>Ⓒ 质量门限拒绝：COV_TRACE(4) / TEST_DIST(5) / V_H_LIMIT(7) / VARIANCE(8) / RESIDUALS(9) / INTEGRITY_WARNING(13)</h3>
+  <dl class="kv">
+    <dt>官方定义</dt><dd>解算完成但未通过某项质量检验：协方差迹 &gt;1000 m；距离检验 &gt;10 km（最多拒绝 3 次）；高度或速度超出口管制限值；方差超限；残差过大；残差大到定位不可靠。<span class="src">P</span><span class="src">M</span></dd>
+    <dt>进入条件</dt><dd>对应检验项超限。其中 V_H_LIMIT 的限值源自出口管制：行业公开记载的 COCOM 限值为高度约 18 km、速度约 1000 节（515 m/s）。<span class="src">P</span><span class="src">M</span><span class="src">C</span></dd>
+    <dt>退出条件</dt><dd>对应指标回落到门限内即恢复 SOL_COMPUTED（逐历元判定）；TEST_DIST 按官方原文“最多拒绝 3 次”。<span class="src">M</span></dd>
+    <dt>典型场景</dt><dd>遮挡/多径/干扰导致解质量恶化时，日志中会在这几个码之间切换；干扰消失即回 SOL_COMPUTED。RESIDUALS/INTEGRITY_WARNING 常见于强多径或粗差观测。</dd>
+  </dl>
+</div>
+
+<div class="grp gl-purple">
+  <h3>Ⓓ FIX 命令验证：PENDING(18) / INVALID_FIX(19)（含 INTEGRITY_WARNING 关联）</h3>
+  <dl class="kv">
+    <dt>官方定义</dt><dd>输入 FIX 位置命令后，接收机自行解算位置，由<b>完整性监控（integrity monitor）</b>对固定坐标做误差检查，并按结果标记状态。OEM7 §2.47（P163）记载四级判定：<br>
+    ① SOL_COMPUTED：输入位置已被测量确认；② PENDING：可用测量不足以确认输入位置；③ INTEGRITY_WARNING：<b>一级错误</b>——固定位置偏差约 <b>25–50 m</b>；④ INVALID_FIX：<b>二级错误</b>——固定位置严重偏差。NovAtel 在线新版补充：PPP seed 验证期间也会触发 PENDING。<span class="src">M</span><span class="src">N</span></dd>
+    <dt>进入条件</dt><dd>① 用户输入 <code>FIX POSITION</code> 命令；② PPP seed 验证。<span class="src">P</span><span class="src">M</span><span class="src">N</span></dd>
+    <dt>退出条件</dt><dd>验证需要跟踪 ≥2 颗卫星<span class="src">V</span>：正常上电仅持续数秒即完成验证；若天线遮挡/未连接且已输入 FIX 命令，PENDING 将无限持续<span class="src">P</span><span class="src">M</span>。验证通过 → SOL_COMPUTED（此时 pos type = FIXEDPOS）；验证失败 → INTEGRITY_WARNING / INVALID_FIX；修正坐标重新输入后再次验证。<span class="src">M</span></dd>
+    <dt>重要后果</dt><dd>被标记 INTEGRITY_WARNING / INVALID_FIX 的错误固定位置会<b>停止差分改正与 RTK 测量的输出</b>，并可能影响时钟控制（clock steering）与卫星信号搜索；该检查可用 <code>RAIMMODE</code> 命令关闭。<span class="src">M</span></dd>
+    <dt>使用建议</dt><dd>FIX POSITION 输入坐标建议精确到几米以内（跟踪 5–6 颗星的单点定位即可达到）；<b>FIX POSITION 仅应用于基站</b>——对流动站施加会使其退出 RTK 模式转为固定位置模式，且不会加速模糊度固定。<span class="src">M</span></dd>
+    <dt>典型场景</dt><dd>基站架设：输入已知点坐标 → 几秒 PENDING → SOL_COMPUTED + FIXEDPOS。若长期停在 PENDING，先查天线；若变 INTEGRITY_WARNING/INVALID_FIX，说明输入坐标与实测相差过大。</dd>
+  </dl>
+</div>
+
+<div class="grp gl-none">
+  <h3>Ⓔ 配置类：UNAUTHORIZED(20) / INVALID_RATE(22)</h3>
+  <dl class="kv">
+    <dt>官方定义</dt><dd>UNAUTHORIZED：定位类型未经授权；INVALID_RATE：此解决方案类型不支持所选的输出速率。<span class="src">P</span><span class="src">M</span></dd>
+    <dt>进入条件</dt><dd>请求了设备授权之外的定位类型；或输出速率超出该解算类型支持范围（OEM7 P430 记载最大输出率：RTK 100 Hz、伪距 100 Hz、GLIDE/PDP 20 Hz、PPP 20 Hz）。<span class="src">P</span><span class="src">M</span></dd>
+    <dt>退出条件</dt><dd>更正配置/授权、或降低输出速率后恢复。属配置问题，不参与动态流转。<span class="src">M</span></dd>
+  </dl>
+</div>
+
+<h2 id="diagram">4. 状态机跳转图（所有条件均有出处，编号对应第 5 节）</h2>
+<p>读图要点：<b>绿框 SOL_COMPUTED 是唯一的“有效”状态</b>（官方规定），位于中心；左侧是启动路径；中间一列是逐历元判定的解算失败/质量拒绝原因码（红虚线双向箭头 = 条件出现进入、条件消除恢复）；右上是 FIX 位置命令的验证流程；右下是配置类状态（不参与动态流转）。</p>
+<div class="figwrap">
+<svg viewBox="0 0 1150 600" style="width:100%;height:auto" role="img" aria-label="解算状态机跳转图">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#43a567"/></marker>
+    <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9634f"/></marker>
+    <marker id="apg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8e6fc0"/></marker>
+  </defs>
+
+  <text class="st" x="20" y="24">解算状态机（sol stat 逐历元上报；箭头编号见第 5 节对照表）</text>
+
+  <!-- 中心：有效解 -->
+  <rect class="r-green" x="80" y="250" width="200" height="70" rx="8"/>
+  <text class="t1" x="180" y="272" text-anchor="middle">SOL_COMPUTED</text>
+  <text class="t2" x="180" y="288" text-anchor="middle">0 · 完全解算</text>
+  <text class="t2" x="180" y="304" text-anchor="middle">官方规定的唯一有效状态【N】</text>
+  <text class="sn" x="80" y="340">只有 SOL_COMPUTED 时输出解才应视为有效【N】</text>
+
+  <!-- 汇流排 -->
+  <line class="bus" x1="380" y1="80" x2="380" y2="528"/>
+  <line class="ab" x1="284" y1="285" x2="376" y2="285" marker-start="url(#ahr)" marker-end="url(#ahr)"/>
+  <text class="sn" x="292" y="272">条件出现⇄消除</text>
+
+  <!-- 原因码列 -->
+  <rect class="r-blue" x="420" y="60" width="170" height="40" rx="8"/>
+  <text class="t1" x="505" y="77" text-anchor="middle">INSUFFICIENT_OBS</text>
+  <text class="t2" x="505" y="91" text-anchor="middle">1 · 观测量不足（&lt;4 星）</text>
+  <line class="ab" x1="418" y1="80" x2="384" y2="80" marker-start="url(#ahr)" marker-end="url(#ahr)"/><text class="nl" x="401" y="74" text-anchor="middle">3</text>
+
+  <rect class="r-blue" x="420" y="116" width="170" height="40" rx="8"/>
+  <text class="t1" x="505" y="133" text-anchor="middle">NO_CONVERGENCE</text>
+  <text class="t2" x="505" y="147" text-anchor="middle">2 · 不收敛</text>
+  <line class="ab" x1="418" y1="136" x2="384" y2="136" marker-start="url(#ahr)" marker-end="url(#ahr)"/><text class="nl" x="401" y="130" text-anchor="middle">4</text>
+
+  <rect class="r-blue" x="420" y="172" width="170" height="40" rx="8"/>
+  <text class="t1" x="505" y="189" text-anchor="middle">SINGULARITY</text>
+  <text class="t2" x="505" y="203" text-anchor="middle">3 · 参数矩阵异常</text>
+  <line class="ab" x1="418" y1="192" x2="384" y2="192" marker-start="url(#ahr)" marker-end="url(#ahr)"/><text class="nl" x="401" y="186" text-anchor="middle">5</text>
+
+  <rect class="r-orange" x="420" y="228" width="170" height="40" rx="8"/>
+  <text class="t1" x="505" y="245" text-anchor="middle">COV_TRACE</text>
+  <text class="t2" x="505" y="259" text-anchor="middle">4 · 协方差迹 &gt;1000 m</text>
+  <line class="ab" x1="418" y1="248" x2="384" y2="248" marker-start="url(#ahr)" marker-end="url(#ahr)"/><text class="nl" x="401" y="242" text-anchor="middle">6</text>
+
+  <rect class="r-orange" x="420" y="284" width="170" height="40" rx="8"/>
+  <text class="t1" x="505" y="301" text-anchor="middle">TEST_DIST</text>
+  <text class="t2" x="505" y="315" text-anchor="middle">5 · 距离 &gt;10 km（最多拒 3 次）</text>
+  <line class="ab" x1="418" y1="304" x2="384" y2="304" marker-start="url(#ahr)" marker-end="url(#ahr)"/><text class="nl" x="401" y="298" text-anchor="middle">7</text>
+
+  <rect class="r-orange" x="420" y="340" width="170" height="40" rx="8"/>
+  <text class="t1" x="505" y="357" text-anchor="middle">V_H_LIMIT</text>
+  <text class="t2" x="505" y="371" text-anchor="middle">7 · 高度/速度超限（COCOM）</text>
+  <line class="ab" x1="418" y1="360" x2="384" y2="360" marker-start="url(#ahr)" marker-end="url(#ahr)"/><text class="nl" x="401" y="354" text-anchor="middle">8</text>
+
+  <rect class="r-orange" x="420" y="396" width="170" height="40" rx="8"/>
+  <text class="t1" x="505" y="413" text-anchor="middle">VARIANCE</text>
+  <text class="t2" x="505" y="427" text-anchor="middle">8 · 方差超限</text>
+  <line class="ab" x1="418" y1="416" x2="384" y2="416" marker-start="url(#ahr)" marker-end="url(#ahr)"/><text class="nl" x="401" y="410" text-anchor="middle">9</text>
+
+  <rect class="r-orange" x="420" y="452" width="170" height="40" rx="8"/>
+  <text class="t1" x="505" y="469" text-anchor="middle">RESIDUALS</text>
+  <text class="t2" x="505" y="483" text-anchor="middle">9 · 残差过大</text>
+  <line class="ab" x1="418" y1="472" x2="384" y2="472" marker-start="url(#ahr)" marker-end="url(#ahr)"/><text class="nl" x="401" y="466" text-anchor="middle">10</text>
+
+  <rect class="r-orange" x="420" y="508" width="170" height="40" rx="8"/>
+  <text class="t1" x="505" y="525" text-anchor="middle">INTEGRITY_WARNING</text>
+  <text class="t2" x="505" y="539" text-anchor="middle">13 · 残差大，定位不可靠</text>
+  <line class="ab" x1="418" y1="528" x2="384" y2="528" marker-start="url(#ahr)" marker-end="url(#ahr)"/><text class="nl" x="401" y="522" text-anchor="middle">11</text>
+
+  <!-- 启动路径 -->
+  <rect class="r-none" x="20" y="470" width="130" height="44" rx="8"/>
+  <text class="t1" x="85" y="488" text-anchor="middle">上电 / 复位</text>
+  <text class="t2" x="85" y="503" text-anchor="middle">无先验星历/位置</text>
+  <line class="af" x1="152" y1="492" x2="170" y2="492" marker-end="url(#ah)"/><text class="nl" x="162" y="485" text-anchor="middle">1</text>
+
+  <rect class="r-blue" x="175" y="470" width="150" height="44" rx="8"/>
+  <text class="t1" x="250" y="488" text-anchor="middle">COLD_START</text>
+  <text class="t2" x="250" y="503" text-anchor="middle">6 · 冷启动尚未收敛</text>
+  <line class="af" x1="255" y1="468" x2="255" y2="324" marker-end="url(#ah)"/>
+  <text class="nl" x="267" y="395">2</text>
+  <text class="sn" x="267" y="410">收敛完成</text>
+
+  <!-- FIX 验证流程 -->
+  <text class="st" x="650" y="50">FIX 位置命令验证流程【M/N/V】</text>
+  <rect class="r-note" x="650" y="64" width="180" height="40" rx="8"/>
+  <text class="t1" x="740" y="81" text-anchor="middle">用户输入 FIX POSITION</text>
+  <text class="t2" x="740" y="95" text-anchor="middle">（或 PPP seed 验证）</text>
+  <line class="ap" x1="740" y1="106" x2="740" y2="120" marker-end="url(#apg)"/><text class="nl" x="752" y="116">12</text>
+
+  <rect class="r-purple" x="650" y="124" width="180" height="56" rx="8"/>
+  <text class="t1" x="740" y="144" text-anchor="middle">PENDING</text>
+  <text class="t2" x="740" y="158" text-anchor="middle">18 · 固定位置待验证</text>
+  <text class="t2" x="740" y="171" text-anchor="middle">跟踪星不足时持续输出</text>
+
+  <rect class="r-red" x="890" y="124" width="160" height="56" rx="8"/>
+  <text class="t1" x="970" y="144" text-anchor="middle">INVALID_FIX</text>
+  <text class="t2" x="970" y="158" text-anchor="middle">19 · 固定位置无效</text>
+  <text class="t2" x="970" y="171" text-anchor="middle">二级错误（严重偏差）</text>
+  <line class="ab" x1="832" y1="152" x2="886" y2="152" marker-end="url(#ahr)"/><text class="nl" x="859" y="145" text-anchor="middle">14</text>
+
+  <path class="af" d="M 648,160 L 230,160 L 230,246" marker-end="url(#ah)"/>
+  <text class="nl" x="240" y="150">13</text>
+  <text class="sn" x="258" y="150">验证通过 → SOL_COMPUTED</text>
+
+  <text class="sn" x="650" y="200">• 验证需跟踪 ≥2 颗卫星【V】</text>
+  <text class="sn" x="650" y="214">• 正常仅持续数秒（上电锁星前）【P/M】</text>
+  <text class="sn" x="650" y="228">• 天线遮挡/未接 + 已输入 FIX → 持续 PENDING【P/M】</text>
+  <text class="sn" x="650" y="242">• PPP seed 验证中也会触发【N】</text>
+  <text class="sn" x="650" y="258">• 固定位置偏差分级【M】：</text>
+  <text class="sn" x="650" y="272">INTEGRITY_WARNING ≈25–50 m（一级）</text>
+  <text class="sn" x="650" y="286">INVALID_FIX 严重偏差（二级）</text>
+
+  <!-- 配置类 -->
+  <text class="st" x="890" y="320">配置类（非动态流转）</text>
+  <rect class="r-none" x="890" y="334" width="160" height="44" rx="8"/>
+  <text class="t1" x="970" y="352" text-anchor="middle">UNAUTHORIZED</text>
+  <text class="t2" x="970" y="367" text-anchor="middle">20 · 定位类型未授权</text>
+  <rect class="r-none" x="890" y="390" width="160" height="44" rx="8"/>
+  <text class="t1" x="970" y="408" text-anchor="middle">INVALID_RATE</text>
+  <text class="t2" x="970" y="423" text-anchor="middle">22 · 输出速率不支持</text>
+  <text class="sn" x="650" y="450">修正配置或授权后恢复【M】；最大输出率：RTK/伪距 100 Hz，PDP/PPP 20 Hz【M P430】</text>
+
+  <!-- 图例 -->
+  <rect class="r-green" x="650" y="474" width="14" height="10" rx="2"/><text class="sn" x="670" y="483">绿：有效解</text>
+  <rect class="r-blue" x="650" y="492" width="14" height="10" rx="2"/><text class="sn" x="670" y="501">蓝：启动 / 解算失败</text>
+  <rect class="r-orange" x="650" y="510" width="14" height="10" rx="2"/><text class="sn" x="670" y="519">橙：质量门限拒绝（逐历元）</text>
+  <rect class="r-purple" x="650" y="528" width="14" height="10" rx="2"/><text class="sn" x="670" y="537">紫：FIX 验证流程</text>
+  <rect class="r-red" x="880" y="474" width="14" height="10" rx="2"/><text class="sn" x="900" y="483">红：验证失败 / 告警</text>
+  <rect class="r-none" x="880" y="492" width="14" height="10" rx="2"/><text class="sn" x="900" y="501">灰：命令 / 配置</text>
+
+  <text class="sn" x="20" y="572">说明：sol stat 逐历元上报；除 SOL_COMPUTED 外，其余取值均为“本历元解不应直接使用”的原因码【N】；质量门限类（4/5/7/8/9/13）在条件消除后自动恢复 SOL_COMPUTED。</text>
+</svg>
+</div>
+
+<h2 id="transitions">5. 转移条件对照表（与上图编号一一对应，全部标注出处）</h2>
+<div class="card">
+<table>
+  <tr><th>编号</th><th>跳转</th><th>触发 / 清除条件</th><th>类型</th><th>出处</th></tr>
+  <tr><td class="num">1</td><td>上电/复位 → COLD_START</td><td>冷启动后滤波器开始初始收敛（无先验星历/位置）</td><td class="side">启动</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">2</td><td>COLD_START → SOL_COMPUTED</td><td>首次收敛完成（“not yet converged from cold start”的解除）</td><td class="up">恢复有效</td><td><span class="src">M</span></td></tr>
+  <tr><td class="num">3</td><td>SOL_COMPUTED ⇄ INSUFFICIENT_OBS</td><td>观测量不足：PVT 需解 4 个未知量（纬度/经度/高程/钟差，OEM7 P429 同述），定位至少需 4 颗卫星 ⇄ 卫星数恢复，逐历元判定</td><td class="side">双向</td><td><span class="src">P</span><span class="src">M</span><span class="src">T</span></td></tr>
+  <tr><td class="num">4</td><td>SOL_COMPUTED ⇄ NO_CONVERGENCE</td><td>迭代解不收敛 ⇄ 收敛恢复</td><td class="side">双向</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">5</td><td>SOL_COMPUTED ⇄ SINGULARITY</td><td>参数矩阵奇异 ⇄ 矩阵条件恢复</td><td class="side">双向</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">6</td><td>SOL_COMPUTED ⇄ COV_TRACE</td><td>位置协方差迹 &gt; 1000 m ⇄ 回落至门限内</td><td class="side">双向</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">7</td><td>SOL_COMPUTED ⇄ TEST_DIST</td><td>新解与当前位置距离 &gt; 10 km 被拒绝（官方：最多拒绝 3 次）⇄ 检验通过</td><td class="side">双向</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">8</td><td>SOL_COMPUTED ⇄ V_H_LIMIT</td><td>高度或速度超出口管制限值（行业记载 COCOM：约 18 km / 1000 节≈515 m/s）⇄ 回落至限值内</td><td class="side">双向</td><td><span class="src">P</span><span class="src">M</span><span class="src">C</span></td></tr>
+  <tr><td class="num">9</td><td>SOL_COMPUTED ⇄ VARIANCE</td><td>方差超过限值 ⇄ 回落至限值内</td><td class="side">双向</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">10</td><td>SOL_COMPUTED ⇄ RESIDUALS</td><td>观测残差过大 ⇄ 残差恢复</td><td class="side">双向</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">11</td><td>SOL_COMPUTED ⇄ INTEGRITY_WARNING</td><td>残差大到定位不可靠 ⇄ 残差恢复</td><td class="side">双向</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">12</td><td>输入 FIX POSITION → PENDING</td><td>用户输入 FIX 位置命令，接收机自算位置并由完整性监控（integrity monitor）验证；PPP seed 验证同样触发（在线新版）</td><td class="side">命令</td><td><span class="src">P</span><span class="src">M</span><span class="src">N</span></td></tr>
+  <tr><td class="num">13</td><td>PENDING → SOL_COMPUTED</td><td>跟踪 ≥2 颗卫星且验证通过（此后 pos type = FIXEDPOS）</td><td class="up">验证通过</td><td><span class="src">P</span><span class="src">M</span><span class="src">V</span></td></tr>
+  <tr><td class="num">14</td><td>PENDING → INVALID_FIX</td><td>验证判定输入的固定位置无效——二级错误（严重偏差；一级错误为 INTEGRITY_WARNING，偏差约 25–50 m）；错误固定位置将停止差分/RTK 改正输出并影响时钟控制与卫星搜索；修正坐标重新输入后再次进入 PENDING 验证</td><td class="down">验证失败</td><td><span class="src">P</span><span class="src">M</span><span class="src">N</span></td></tr>
+  <tr><td class="num">15</td><td>PENDING 持续（自保持）</td><td>跟踪卫星 &lt;2 颗无法验证：上电初期数秒属正常；天线遮挡/未连接且已输入 FIX 命令 → 无限持续</td><td class="side">保持</td><td><span class="src">P</span><span class="src">M</span><span class="src">V</span></td></tr>
+  <tr><td class="num">16</td><td>任意状态 → UNAUTHORIZED</td><td>请求的定位类型超出设备授权范围 → 更正授权/配置后恢复</td><td class="side">配置</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="num">17</td><td>任意状态 → INVALID_RATE</td><td>输出速率超出该解算类型支持范围（OEM7 P430：RTK/伪距最大 100 Hz、PDP/PPP 最大 20 Hz）→ 降低输出率后恢复</td><td class="side">配置</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+</table>
+</div>
+
+<h2 id="inout">6. 进出条件汇总表（按状态查：怎么进来，怎么出去）</h2>
+<div class="card">
+<table>
+  <tr><th>状态</th><th>进入条件</th><th>退出去向</th><th>出处</th></tr>
+  <tr><td class="ascii">SOL_COMPUTED (0)</td><td>解算收敛且全部质量检查通过</td><td>→ 1/2/3（解算失败）或 4/5/7/8/9/13（质量拒绝），逐历元判定</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">INSUFFICIENT_OBS (1)</td><td>可用观测不足（定位至少需 4 颗卫星：4 个未知量）</td><td>→ SOL_COMPUTED（卫星数恢复）</td><td><span class="src">P</span><span class="src">M</span><span class="src">T</span></td></tr>
+  <tr><td class="ascii">NO_CONVERGENCE (2)</td><td>迭代解不收敛</td><td>→ SOL_COMPUTED（收敛恢复）</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">SINGULARITY (3)</td><td>参数矩阵奇异</td><td>→ SOL_COMPUTED（矩阵条件恢复）</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">COV_TRACE (4)</td><td>位置协方差迹 &gt; 1000 m</td><td>→ SOL_COMPUTED（迹回落）</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">TEST_DIST (5)</td><td>新解距当前位置 &gt; 10 km</td><td>→ SOL_COMPUTED（检验通过；官方：最多拒绝 3 次）</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">COLD_START (6)</td><td>冷启动后、首次收敛前</td><td>→ SOL_COMPUTED（收敛完成）</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">V_H_LIMIT (7)</td><td>高度/速度超出口管制限值（COCOM 约 18 km / 1000 节）</td><td>→ SOL_COMPUTED（回落至限值内）</td><td><span class="src">P</span><span class="src">M</span><span class="src">C</span></td></tr>
+  <tr><td class="ascii">VARIANCE (8)</td><td>方差超过限值</td><td>→ SOL_COMPUTED（方差回落）</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">RESIDUALS (9)</td><td>观测残差过大</td><td>→ SOL_COMPUTED（残差恢复）</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">INTEGRITY_WARNING (13)</td><td>残差大到定位不可靠；FIX 验证中表示固定位置偏差约 25–50 m 的一级错误</td><td>→ SOL_COMPUTED（残差恢复）；FIX 流程中修正坐标后重新验证</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">PENDING (18)</td><td>输入 FIX POSITION 命令（或 PPP seed 验证中），跟踪星不足以完成验证</td><td>→ SOL_COMPUTED（≥2 星验证通过）；→ INTEGRITY_WARNING（偏差约 25–50 m）/ INVALID_FIX（严重偏差）；&lt;2 星则持续</td><td><span class="src">P</span><span class="src">M</span><span class="src">V</span></td></tr>
+  <tr><td class="ascii">INVALID_FIX (19)</td><td>FIX 验证判定输入位置无效（二级错误，严重偏差）</td><td>→ 修正后重新输入 FIX，再入 PENDING 验证</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">UNAUTHORIZED (20)</td><td>请求的定位类型未经授权</td><td>→ 更正授权/配置后恢复</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+  <tr><td class="ascii">INVALID_RATE (22)</td><td>输出速率超出解算类型支持范围（OEM7 P430：RTK/伪距 100 Hz、PDP/PPP 20 Hz）</td><td>→ 降低输出率后恢复</td><td><span class="src">P</span><span class="src">M</span></td></tr>
+</table>
+</div>
+
+<h2 id="related">7. 与表 4-2 的关系（两个字段要一起看）</h2>
+<div class="card">
+  <p><code>sol stat</code>（表 4-1）与 <code>pos type</code>（表 4-2）在 BESTPOS 等消息中相邻出现，分工明确：</p>
+  <table>
+    <tr><th>字段</th><th>回答的问题</th><th>判定依据</th><th>解读顺序</th></tr>
+    <tr><td>sol stat（表 4-1）</td><td>本历元的解<b>能不能用</b>？不能用的原因？</td><td>官方规定：仅 SOL_COMPUTED 为有效 <span class="src">N</span></td><td>先看它定有效性</td></tr>
+    <tr><td>pos type（表 4-2）</td><td>这个解是<b>哪一种</b>、什么精度档？</td><td>观测手段 + 增强源 + 模糊度状态</td><td>有效后再看它定精度档</td></tr>
+  </table>
+  <h3>组合阅读示例</h3>
+  <table>
+    <tr><th>日志组合</th><th>含义</th></tr>
+    <tr><td><code>SOL_COMPUTED + NARROW_INT</code></td><td>有效的 RTK 固定解（厘米级，可用）</td></tr>
+    <tr><td><code>RESIDUALS + NARROW_INT</code></td><td>解算类型仍是 RTK 固定，但本历元残差超限——按官方规定不应作为有效解使用 <span class="src">N</span></td></tr>
+    <tr><td><code>INSUFFICIENT_OBS + NONE</code></td><td>卫星不足，无解</td></tr>
+    <tr><td><code>COLD_START + NONE</code></td><td>冷启动初期，尚未收敛</td></tr>
+    <tr><td><code>PENDING + FIXEDPOS</code></td><td>已输入 FIX 位置，正在等待验证（查天线/卫星数）</td></tr>
+    <tr><td><code>INTEGRITY_WARNING + FIXEDPOS</code></td><td>FIX 固定坐标与实测偏差约 25–50 m（一级错误）——差分/RTK 改正输出会被停止 <span class="src">M</span></td></tr>
+  </table>
+</div>
+
+<h2 id="oem7diff">8. 与 OEM7 v11 手册的对比核对</h2>
+<div class="card">
+  <p>北云表 4-1 与 OEM7 v11 <b>Table 73（P432–433）逐值一致</b>：0–9、13、18、19、20、22 及全部预留段完全相同，北云为中文翻译版。差异仅在信息深度与手册版本：</p>
+  <table>
+    <tr><th>项目</th><th>北云 UG016 表 4-1</th><th>OEM7 v11 / 其他官方文档</th><th>本文采用</th></tr>
+    <tr><td>全部取值与预留段</td><td>0-9、13、18-20、22</td><td>完全相同（v11 Table 73，P432–433）</td><td>一致，北云为翻译版 <span class="src">M</span></td></tr>
+    <tr><td>“仅 SOL_COMPUTED 有效”声明</td><td>无</td><td>v11 无此句；NovAtel 在线新版文档有</td><td>采用并标注 <span class="src">N</span></td></tr>
+    <tr><td>PENDING 触发条件</td><td>FIX 位置命令</td><td>v11 相同；在线新版补充 PPP seed 验证</td><td>PPP seed 标注 <span class="src">N</span></td></tr>
+    <tr><td>验证所需卫星数</td><td>“卫星数不足”（无具体数值）</td><td>v11 相同；OEMV 手册写明需跟踪 ≥2 颗</td><td>≥2 颗标注 <span class="src">V</span></td></tr>
+    <tr><td>FIX 验证错误分级</td><td>无</td><td>v11 §2.47（P163）：INTEGRITY_WARNING 偏差约 25–50 m（一级）、INVALID_FIX 严重偏差（二级）；错误位置停止差分/RTK 输出并影响时钟控制与卫星搜索，RAIMMODE 可关闭</td><td>已采纳 <span class="src">M</span></td></tr>
+    <tr><td>最大输出率（INVALID_RATE）</td><td>仅“不支持所选速率”</td><td>v11 P430：RTK/伪距 100 Hz、GLIDE(PDP)/PPP 20 Hz</td><td>已采纳 <span class="src">M</span></td></tr>
+    <tr><td>PVT 四未知量（≥4 星依据）</td><td>无</td><td>v11 P429：纬度、经度、高程、接收机钟差</td><td>已采纳 <span class="src">M</span></td></tr>
+    <tr><td>OEM6 遗留值（10/11/14-17）</td><td>预留</td><td>v11 同为预留（OEM6 曾有定义，均不再使用）</td><td>一致 <span class="src">M</span></td></tr>
+  </table>
+</div>
+
+<h2 id="refs">9. 参考资料（本文所有条件的出处）</h2>
+<div class="card">
+  <p><span class="src">M</span> 《OEM7 Commands and Logs Reference Manual v11》（本地 <code>OEM7_Commands_Logs_Manual.pdf</code>，1091 页；北云协议的源头文档，优先级最高）：Table 73 Solution Status（P432–433）、§2.47 FIX（P163–165，完整性检查四级状态与使用建议）、§3.14 BESTPOS（P429–430，PVT 四未知量、DOP、低延迟 RTK 60 s 外推、各定位模式最大输出率）。</p>
+  <p><span class="src">P</span> 《UG016 数据通信接口协议》（北云科技）表 4-1，P64–65（本地 <code>pdf_extracted.txt</code> 第 2004–2033 行）；同表英文版见北云官方
+    <a href="https://www.bynav.com/media/upload/cms_15/UG017_Interface%20Protocol_Bynav.pdf">UG017 Interface Protocol</a>。</p>
+  <p><span class="src">N</span> NovAtel 在线文档 <a href="https://docs.novatel.com/OEM7/Content/Logs/BESTPOS.htm">BESTPOS（docs.novatel.com，较新版本）</a>：“仅 SOL_COMPUTED 有效”的规定、PPP seed 触发 PENDING。</p>
+  <p><span class="src">V</span> NovAtel <a href="https://lefebure.com/products/files/Novatel-OEMV-Family-Firmware-Reference.pdf">OEMV Family Firmware Reference Manual</a>：PENDING 验证需跟踪 ≥2 颗卫星。</p>
+  <p><span class="src">C</span> COCOM 限值行业公开记载：<a href="https://github.com/tomojitakasu/RTKLIB/issues/571">RTKLIB Issue #571</a>（18 km / 1000 节）、
+    <a href="https://portal.u-blox.com/s/question/0D5Oj00000arpVDKAY/gnss-modules-over-18-km-altitude">u-blox 官方论坛</a>（18 km）、
+    <a href="https://ravtrack.com/GPStracking/cocom-gps-tracking-limits/">RavTrack: COCOM GPS Tracking Limits</a>（1000 节≈515 m/s）。</p>
+  <p><span class="src">T</span> “定位至少需 4 颗卫星”：PVT 解算含 4 个未知量（纬度、经度、高程、接收机钟差），OEM7 v11 P429 同述 <span class="src">M</span>，属卫星导航教科书基本事实。</p>
+</div>
+
+<footer>
+  <p>生成依据：pdf_extracted.txt 第 2004–2033 行（表 4-1 协议原文，UG016 数据通信接口协议 P64–65），并已逐条核对 OEM7 v11 手册（Table 73 P432–433、§2.47 FIX P163–165、§3.14 BESTPOS P429–430）。<br>
+  编写原则：枚举值与描述照录协议原文及 OEM7 v11 手册；所有进入/退出/恢复条件均以 <span class="src">M</span><span class="src">P</span><span class="src">N</span><span class="src">V</span><span class="src">C</span><span class="src">T</span> 标注权威出处，未做任何无依据的推测。</p>
+</footer>
+
+</div>
+</body>
+</html>

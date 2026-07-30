@@ -1,0 +1,96 @@
+# GNSS multi-antenna interference test configuration.
+# Each test group defines a set of antennas, data files, and time segments.
+# Add new test groups here without modifying code.
+
+test_groups:
+  - name: "0721"
+    description: "0721 dual-antenna test: BT-T076 vs BT-T617"
+    data_dir: "0721"
+    antennas:
+      - id: "076"
+        display_name: "北天BT-T076"
+        com3: "111-com3.dat"
+        com4: "111-com4.dat"
+      - id: "617"
+        display_name: "北天BT-T617"
+        com3: "222-COM3.dat"
+        com4: "222-COM4.dat"
+    segments:
+      - { label: "无干扰 #1", duration: 36.79 }
+      - { label: "409MHz 干扰", duration: 34.81 }
+      - { label: "无干扰 #2", duration: 35.08 }
+      - { label: "392MHz 干扰", duration: 35.81 }
+      - { label: "无干扰 #3", duration: 35.50 }
+      - { label: "4G/5G 干扰", duration: 34.76 }
+      - { label: "无干扰 #4", duration: 38.47 }
+      - { label: "Wi-Fi 干扰", duration: 36.70 }
+      - { label: "无干扰 #5", duration: 37.96 }
+
+  - name: "0727"
+    description: "0727 dual-antenna test: BT-T076 vs BT-T617"
+    data_dir: "0727"
+    antennas:
+      - id: "076"
+        display_name: "北天BT-T076"
+        com3: "076-com3.dat"
+        com4: "076-com4.dat"
+      - id: "617"
+        display_name: "北天BT-T617"
+        com3: "617-COM3.dat"
+        com4: "617-com4.dat"
+    segments:
+      - { label: "无干扰 #1", duration: 39.80 }
+      - { label: "409MHz 干扰", duration: 33.41 }
+      - { label: "无干扰 #2", duration: 35.01 }
+      - { label: "392MHz 干扰", duration: 43.73 }
+      - { label: "无干扰 #3", duration: 34.51 }
+      - { label: "4G/5G 干扰", duration: 45.79 }
+      - { label: "无干扰 #4", duration: 79.35 }
+      - { label: "Wi-Fi 干扰", duration: 54.96 }
+      - { label: "无干扰 #5", duration: 68.51 }
+
+  - name: "0728-076-560"
+    description: "0728 dual-antenna test: BT-T076 vs BT-T560"
+    data_dir: "0728/076-560"
+    antennas:
+      - id: "076"
+        display_name: "北天BT-T076"
+        com3: "0728-076-com3.dat"
+        com4: "0728-076-com4.dat"
+      - id: "560"
+        display_name: "北天BT-T560"
+        com3: "0728-560-COM3.dat"
+        com4: "0728-560-COM4.dat"
+    segments:
+      - { label: "无干扰 #1", duration: 35.27 }
+      - { label: "409MHz 干扰", duration: 44.40 }
+      - { label: "无干扰 #2", duration: 48.44 }
+      - { label: "392MHz 干扰", duration: 42.57 }
+      - { label: "无干扰 #3", duration: 39.82 }
+      - { label: "4G/5G 干扰", duration: 53.68 }
+      - { label: "无干扰 #4", duration: 53.75 }
+      - { label: "Wi-Fi 干扰", duration: 54.72 }
+      - { label: "无干扰 #5", duration: 45.49 }
+
+  - name: "0728-076-617"
+    description: "0728 dual-antenna test: BT-T076 vs BT-T617"
+    data_dir: "0728/076-617"
+    antennas:
+      - id: "076"
+        display_name: "北天BT-T076"
+        com3: "0728-076-com3.dat"
+        com4: "0728-076-com4.dat"
+      - id: "617"
+        display_name: "北天BT-T617"
+        com3: "0728-617-COM3.dat"
+        com4: "0728-617-COM4.dat"
+    segments:
+      - { label: "无干扰 #1", duration: 45.25 }
+      - { label: "409MHz 干扰", duration: 43.57 }
+      - { label: "无干扰 #2", duration: 56.70 }
+      - { label: "392MHz 干扰", duration: 43.91 }
+      - { label: "无干扰 #3", duration: 48.78 }
+      - { label: "4G/5G 干扰", duration: 60.11 }
+      - { label: "无干扰 #4", duration: 57.80 }
+      - { label: "Wi-Fi 干扰", duration: 38.33 }
+      - { label: "无干扰 #5", duration: 50.16 }
