@@ -8,13 +8,6 @@ __pycache__/
 venv/
 env/
 
-# Data files (large binary)
-*.dat
-*.26O
-
-# Reports (large HTML with embedded images)
-reports/
-
 # OS
 .DS_Store
 Thumbs.db

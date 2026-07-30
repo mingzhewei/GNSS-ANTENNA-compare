@@ -1,0 +1,10 @@
+﻿label,n,std_psr_median,std_psr_mean,std_psr_p25,std_psr_p75,std_adr_median,std_adr_mean,locktime_median,locktime_p25,doppler_std,cno_median
+无干扰 #1,0,,,,,,,,,,
+409MHz 干扰,0,,,,,,,,,,
+无干扰 #2,0,,,,,,,,,,
+392MHz 干扰,0,,,,,,,,,,
+无干扰 #3,0,,,,,,,,,,
+4G/5G 干扰,0,,,,,,,,,,
+无干扰 #4,0,,,,,,,,,,
+Wi-Fi 干扰,0,,,,,,,,,,
+无干扰 #5,0,,,,,,,,,,

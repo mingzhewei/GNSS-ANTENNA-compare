@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>GNSS DAT 文件解析报告索引</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 40px; background: #f8f9fa; color: #333; }
+  .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  h1 { font-size: 24px; margin-bottom: 16px; }
+  h2 { font-size: 18px; margin-top: 32px; margin-bottom: 12px; border-left: 4px solid #05509d; padding-left: 10px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 16px; font-size: 14px; }
+  th, td { border: 1px solid #dee2e6; padding: 10px 12px; }
+  th { background: #f1f3f5; font-weight: 600; text-align: left; }
+  tr:nth-child(even) { background: #fafbfc; }
+  a { color: #05509d; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .note { background: #fff8e6; border-left: 4px solid #f0ad4e; padding: 12px 16px; margin-top: 24px; border-radius: 4px; font-size: 13px; color: #856404; }
+  .warn { background: #fdeeee; border-left: 4px solid #d9634f; padding: 12px 16px; margin-top: 12px; border-radius: 4px; font-size: 13px; color: #a03a30; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>GNSS DAT 文件解析报告索引</h1>
+
+  <h2>0719 M21 双天线抗干扰对比测试（临时数据）</h2>
+  <table>
+    <thead>
+      <tr><th>报告</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="0719/antenna_111_0719_report.html">天线 111 0719 报告</a></td>
+        <td>基于 0719/111-com3.dat：每星 C/N0 统计、分段指标、GSV 可见星数等。</td>
+      </tr>
+      <tr>
+        <td><a href="0719/antenna_222_0719_report.html">天线 222 0719 报告</a></td>
+        <td>基于 0719/222-com3.dat：同上。</td>
+      </tr>
+      <tr>
+        <td><a href="0719/antenna_111_vs_222_0719_report.html">111 vs 222 0719 对比报告</a></td>
+        <td>在“临时假设同时间段”前提下的整体/分系统/分时段对比。</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="warn">
+    <strong>注意：</strong>0719 的 COM4 二进制文件经校验为消息 ID 0xA521（42273）的自定义二进制消息，与 UG016 中 RANGECMPB 的规定 ID 140（0x008C）不符，因此上述报告未使用 COM4 数据。111 与 222 的 COM3 时间戳也不重叠，横向对比仅在用户给出的临时假设下进行，结论仅供参考。
+  </div>
+
+  <h2>0718 单天线各干扰场景逐文件报告</h2>
+  <p>以下是为每个 DAT 文件生成的 HTML 报告与 CSV 统计文件。报告基于 UG016 协议 GSV 字段的 SNR（信噪比）字段，并包含与 TRACKSTAT C/No 的对比。</p>
+  <table>
+    <thead>
+      <tr>
+        <th>DAT 文件</th>
+        <th>HTML 报告</th>
+        <th>CSV 统计</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>111-原始.dat</td>
+        <td><a href="111-原始.dat.report.html">HTML 报告</a></td>
+        <td><a href="111-原始.dat.stats.csv">CSV 统计</a></td>
+      </tr>
+      <tr>
+        <td>111-2.4.dat</td>
+        <td><a href="111-2.4.dat.report.html">HTML 报告</a></td>
+        <td><a href="111-2.4.dat.stats.csv">CSV 统计</a></td>
+      </tr>
+      <tr>
+        <td>111-392.dat</td>
+        <td><a href="111-392.dat.report.html">HTML 报告</a></td>
+        <td><a href="111-392.dat.stats.csv">CSV 统计</a></td>
+      </tr>
+      <tr>
+        <td>111-409.dat</td>
+        <td><a href="111-409.dat.report.html">HTML 报告</a></td>
+        <td><a href="111-409.dat.stats.csv">CSV 统计</a></td>
+      </tr>
+      <tr>
+        <td>111-4G.dat</td>
+        <td><a href="111-4G.dat.report.html">HTML 报告</a></td>
+        <td><a href="111-4G.dat.stats.csv">CSV 统计</a></td>
+      </tr>
+      <tr>
+        <td>222-原始.dat</td>
+        <td><a href="222-原始.dat.report.html">HTML 报告</a></td>
+        <td><a href="222-原始.dat.stats.csv">CSV 统计</a></td>
+      </tr>
+      <tr>
+        <td>222-2.4.dat</td>
+        <td><a href="222-2.4.dat.report.html">HTML 报告</a></td>
+        <td><a href="222-2.4.dat.stats.csv">CSV 统计</a></td>
+      </tr>
+      <tr>
+        <td>222-392.dat</td>
+        <td><a href="222-392.dat.report.html">HTML 报告</a></td>
+        <td><a href="222-392.dat.stats.csv">CSV 统计</a></td>
+      </tr>
+      <tr>
+        <td>222-409.dat</td>
+        <td><a href="222-409.dat.report.html">HTML 报告</a></td>
+        <td><a href="222-409.dat.stats.csv">CSV 统计</a></td>
+      </tr>
+      <tr>
+        <td>222-4G.dat</td>
+        <td><a href="222-4G.dat.report.html">HTML 报告</a></td>
+        <td><a href="222-4G.dat.stats.csv">CSV 统计</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>0718 综合分析报告</h2>
+  <table>
+    <thead>
+      <tr><th>报告</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="antenna_111_interference_report.html">天线 111 抗干扰评估报告</a></td>
+        <td>汇总 111 在原始/2.4G/4G/392/409 场景下的性能退化。</td>
+      </tr>
+      <tr>
+        <td><a href="antenna_222_interference_report.html">天线 222 抗干扰评估报告</a></td>
+        <td>汇总 222 在原始/2.4G/4G/392/409 场景下的性能退化。</td>
+      </tr>
+      <tr>
+        <td><a href="antenna_111_vs_222_comparison.html">111 vs 222 对比报告</a></td>
+        <td>两根天线在各干扰场景下的直接对比。</td>
+      </tr>
+      <tr>
+        <td><a href="antenna_strength_comparison.html">天线强度对比（详细）</a></td>
+        <td>包含 Wilcoxon 检验的统计对比。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>提示：</strong>打开任意 HTML 报告即可查看柱状统计图、时间序列图以及每颗卫星的最高值、最低值、75 分位、25 分位数据表。
+  </div>
+</div>
+</body>
+</html>

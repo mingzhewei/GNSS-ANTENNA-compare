@@ -1,0 +1,5 @@
+﻿interf_seg,delta_median,delta_p25,delta_p75,n_lost,pll_change_pct,etsi_pass
+409MHz 干扰,-5.125,-8.03125,-1.1875,5,0.0,False
+392MHz 干扰,-8.5,-12.25,-2.25,7,0.0,False
+4G/5G 干扰,-1.0,-1.75,-0.40625,0,0.0,True
+Wi-Fi 干扰,-0.5625,-1.25,-0.15625,0,0.0,True
