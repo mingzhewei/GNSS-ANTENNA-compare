@@ -15,3 +15,14 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Data and reports for 0718/0719/0721/0727 (not uploaded per user request)
+0718/
+0719/
+0721/
+0727/
+reports/0718/
+reports/0719/
+reports/0721/
+reports/0727/
+reports/0728/
