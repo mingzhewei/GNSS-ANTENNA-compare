@@ -94,3 +94,49 @@ test_groups:
       - { label: "无干扰 #4", duration: 57.80 }
       - { label: "Wi-Fi 干扰", duration: 38.33 }
       - { label: "无干扰 #5", duration: 50.16 }
+
+  - name: "0731-076-by403"
+    description: "0731 dual-antenna test: BT-T076 vs by403"
+    data_dir: "0731/076-by403"
+    antennas:
+      - id: "076"
+        display_name: "北天BT-T076"
+        com3: "076-by403-com3.dat"
+        com4: "076-by403-com4.dat"
+      - id: "by403"
+        display_name: "by403"
+        com3: "by403-com3.dat"
+        com4: "by403-com4.dat"
+    segments:
+      - { label: "无干扰 #1", duration: 41.43 }
+      - { label: "409MHz 干扰", duration: 38.65 }
+      - { label: "无干扰 #2", duration: 43.40 }
+      - { label: "392MHz 干扰", duration: 41.33 }
+      - { label: "无干扰 #3", duration: 44.51 }
+      - { label: "4G/5G 干扰", duration: 50.67 }
+      - { label: "无干扰 #4", duration: 67.77 }
+      - { label: "Wi-Fi 干扰", duration: 71.39 }
+      - { label: "无干扰 #5", duration: 38.18 }
+
+  - name: "0731-076-speed"
+    description: "0731 dual-antenna test: BT-T076 vs speed"
+    data_dir: "0731/076-speed"
+    antennas:
+      - id: "076"
+        display_name: "北天BT-T076"
+        com3: "076-speed-com3.dat"
+        com4: "076-speed-com4.dat"
+      - id: "speed"
+        display_name: "speed"
+        com3: "speed-com3.dat"
+        com4: "speed-com4.dat"
+    segments:
+      - { label: "无干扰 #1", duration: 61.94 }
+      - { label: "409MHz 干扰", duration: 40.63 }
+      - { label: "无干扰 #2", duration: 34.81 }
+      - { label: "392MHz 干扰", duration: 36.34 }
+      - { label: "无干扰 #3", duration: 38.36 }
+      - { label: "4G/5G 干扰", duration: 49.21 }
+      - { label: "无干扰 #4", duration: 60.74 }
+      - { label: "Wi-Fi 干扰", duration: 37.79 }
+      - { label: "无干扰 #5", duration: 42.10 }

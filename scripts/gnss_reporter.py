@@ -194,6 +194,22 @@ def antenna_report(ant_id, ant_name, data, test_name):
             s["best_pos_type"] or "—",
         ])
 
+    # Time traceability: raw data range and segment definitions
+    raw_start = data["track"][0]["sow"]
+    raw_end = data["track"][-1]["sow"]
+    raw_week = data["track"][0]["week"]
+    raw_span = raw_end - raw_start
+
+    # Segment definition rows (user-provided durations)
+    seg_def_rows = []
+    for seg in segments:
+        seg_def_rows.append([
+            seg["idx"], seg["label"], fmt(seg["duration"], 2),
+            fmt(seg["start"], 3), fmt(seg["end"], 3),
+            fmt(seg["middle_start"], 3), fmt(seg["middle_end"], 3),
+            fmt(seg["middle_duration"], 1) + ("*" if seg["truncated"] else ""),
+        ])
+
     # Per-segment per-sat stats rows
     seg_sat_rows = []
     for _, r in seg_stats.iterrows():
@@ -393,9 +409,13 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 </div>
 
 <div class="card">
-<h2>2. 时段划分与截取方法</h2>
-<p>按用户提供的连续片段时长依次切分；每个片段取中间 10 秒作为稳态分析窗口。带 * 号表示该片段被文件实际长度截断。</p>
+<h2>2. 数据时间范围与片段追溯</h2>
+<p><b>原始数据时间范围</b>：GPS 周 {raw_week}，周内秒 {raw_start:.3f} s ~ {raw_end:.3f} s（总时长 {raw_span:.1f} s）。</p>
+<p><b>片段定义</b>：按用户提供的连续片段时长依次切分；每个片段取中间 10 秒作为稳态分析窗口。带 * 号表示该片段被文件实际长度截断。</p>
 {missing_seg_note}
+<h3>2.1 用户提供的片段定义</h3>
+{html_table(seg_def_rows, ["序号", "片段标签", "定义时长(s)", "片段起(s)", "片段止(s)", "分析窗口起(s)", "分析窗口止(s)", "窗口时长(s)"])}
+<h3>2.2 实际分析窗口统计</h3>
 {html_table(seg_rows, ["片段", "中间窗口起", "中间窗口止", "截取时长", "C/N0 中位数", "C/N0 p25", "C/N0 p75",
               "PLL 锁定", "locktime<0.5s", "跟踪星数", "参与解算星数", "伪距 RMS", "最佳定位类型"])}
 </div>
@@ -542,6 +562,22 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
             fmt(ch.groupby("sow")["svid"].nunique().mean(), 1),
             fmt(d["bp_df"]["soln_svs"].mean(), 1) if not d["bp_df"].empty else "—",
             fmt(d["gst_df"]["pr_rms"].median(), 3) if not d["gst_df"].empty else "—",
+        ])
+
+    # Time traceability: raw data range and segment definitions
+    raw_start = ant_data[first_ant]["track"][0]["sow"]
+    raw_end = ant_data[first_ant]["track"][-1]["sow"]
+    raw_week = ant_data[first_ant]["track"][0]["week"]
+    raw_span = raw_end - raw_start
+
+    # Segment definition rows (user-provided durations)
+    seg_def_rows = []
+    for seg in ant_data[first_ant]["segments"]:
+        seg_def_rows.append([
+            seg["idx"], seg["label"], fmt(seg["duration"], 2),
+            fmt(seg["start"], 3), fmt(seg["end"], 3),
+            fmt(seg["middle_start"], 3), fmt(seg["middle_end"], 3),
+            fmt(seg["middle_duration"], 1) + ("*" if seg["truncated"] else ""),
         ])
 
     # Per-segment comparison
@@ -985,6 +1021,79 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
         scenario_texts.append(f"{label} 场景 {desc}")
     scenario_summary = "；".join(scenario_texts) + "。" if scenario_texts else "无足够数据。"
 
+    # Absolute performance analysis: baseline C/No and interference segment C/No
+    def get_segment_cno(ant, label):
+        seg = ant_data[ant]["seg_metrics"][ant_data[ant]["seg_metrics"]["label"] == label]
+        if not seg.empty:
+            agg = seg.iloc[0]["agg_cno"]
+            return agg["median"] if agg else None
+        return None
+
+    baseline_first = []
+    baseline_second = []
+    interf_first = []
+    interf_second = []
+    for label in seg_labels:
+        cno_first = get_segment_cno(first_ant, label)
+        cno_second = get_segment_cno(second_ant, label)
+        if cno_first is None or cno_second is None:
+            continue
+        if label.startswith("无干扰"):
+            baseline_first.append(cno_first)
+            baseline_second.append(cno_second)
+        elif is_interference(label):
+            interf_first.append(cno_first)
+            interf_second.append(cno_second)
+
+    baseline_diff = float(np.median(np.array(baseline_first) - np.array(baseline_second))) if baseline_first and baseline_second else None
+    interf_diff = float(np.median(np.array(interf_first) - np.array(interf_second))) if interf_first and interf_second else None
+
+    # Determine absolute vs relative performance conclusion
+    if baseline_diff is not None and baseline_diff > 0.5:
+        abs_better = first_name
+    elif baseline_diff is not None and baseline_diff < -0.5:
+        abs_better = second_name
+    else:
+        abs_better = "两者持平"
+
+    if interf_diff is not None and interf_diff > 0.5:
+        interf_abs_better = first_name
+    elif interf_diff is not None and interf_diff < -0.5:
+        interf_abs_better = second_name
+    else:
+        interf_abs_better = "两者持平"
+
+    # Relative degradation (anti-jamming robustness)
+    rel_texts = []
+    for label in sorted(set(assess_first) | set(assess_second)):
+        a = assess_first.get(label)
+        b = assess_second.get(label)
+        if a is None or b is None:
+            continue
+        da = a["delta_median"]
+        db = b["delta_median"]
+        if da is None or db is None:
+            continue
+        if da > db + 0.5:
+            rel_texts.append(f"{label} {first_name} 退化更小")
+        elif db > da + 0.5:
+            rel_texts.append(f"{label} {second_name} 退化更小")
+        else:
+            rel_texts.append(f"{label} 退化相当")
+    rel_summary = "；".join(rel_texts) + "。" if rel_texts else "无足够数据。"
+
+    # Overall performance verdict
+    if abs_better == first_name and interf_abs_better == first_name:
+        overall_verdict = f"{first_name} 整体性能更强：基线更高且干扰段绝对水平仍保持领先。"
+    elif abs_better == second_name and interf_abs_better == second_name:
+        overall_verdict = f"{second_name} 整体性能更强：基线更高且干扰段绝对水平仍保持领先。"
+    elif abs_better == first_name and interf_abs_better == second_name:
+        overall_verdict = f"{first_name} 基线更高，但 {second_name} 干扰段绝对水平反超；两者各有优势。"
+    elif abs_better == second_name and interf_abs_better == first_name:
+        overall_verdict = f"{second_name} 基线更高，但 {first_name} 干扰段绝对水平反超；两者各有优势。"
+    else:
+        overall_verdict = "两者整体性能接近，无显著优劣。"
+
     # Determine COM4 format description dynamically
     com4_desc_parts = []
     for ant in (first_ant, second_ant):
@@ -1003,7 +1112,10 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
 3. <b>显著性检验</b>：Wilcoxon 符号秩检验显示 {win_first} 个片段 {first_name} 显著更高、{win_second} 个片段 {second_name} 显著更高、{tie} 个片段无显著差异。
 4. <b>抗干扰性（参考 ETSI EN 303 413 的 1 dB 行业参考线）</b>：{first_name} 在 {total_intf} 种干扰中通过 {pass_first} 种；{second_name} 通过 {pass_second} 种。
 5. <b>卫星保持</b>：干扰段累计丢失卫星数 {first_name} 为 {total_lost_first} 颗次，{second_name} 为 {total_lost_second} 颗次。
-6. <b>分场景</b>：{scenario_summary}
+6. <b>分场景退化</b>：{scenario_summary}
+7. <b>绝对接收能力</b>：基线（无干扰）C/N0 差值中位数 = {fmt(baseline_diff, 2) if baseline_diff is not None else "—"} dB（{abs_better} 基线更高）；干扰段 C/N0 差值中位数 = {fmt(interf_diff, 2) if interf_diff is not None else "—"} dB（{interf_abs_better} 干扰段绝对水平更高）。
+8. <b>相对抗干扰能力</b>：{rel_summary}
+9. <b>总体性能判定</b>：{overall_verdict}
 """
 
     html = f"""<!DOCTYPE html>
@@ -1035,116 +1147,124 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 </div>
 
 <div class="card">
-<h2>1. 整体指标对比</h2>
+<h2>1. 数据时间范围与片段追溯</h2>
+<p><b>原始数据时间范围</b>：GPS 周 {raw_week}，周内秒 {raw_start:.3f} s ~ {raw_end:.3f} s（总时长 {raw_span:.1f} s）。</p>
+<p><b>片段定义</b>：按用户提供的连续片段时长依次切分；每个片段取中间 10 秒作为稳态分析窗口。带 * 号表示该片段被文件实际长度截断。</p>
+<h3>1.1 用户提供的片段定义</h3>
+{html_table(seg_def_rows, ["序号", "片段标签", "定义时长(s)", "片段起(s)", "片段止(s)", "分析窗口起(s)", "分析窗口止(s)", "窗口时长(s)"])}
+</div>
+
+<div class="card">
+<h2>2. 整体指标对比</h2>
 {html_table(cmp_rows, ["天线", "C/N0 中位数", "C/N0 均值", "PLL 锁定比", "locktime<0.5s", "reject 比例", "平均跟踪星数", "平均参与解算星数", "伪距 RMS 中位数"])}
 </div>
 
 <div class="card">
-<h2>2. 各系统 C/N0 中位数对比</h2>
+<h2>3. 各系统 C/N0 中位数对比</h2>
 <img src="data:image/png;base64,{fig_sys}" alt="per-system cno">
 {html_table(sys_rows, ["天线", "系统", "C/N0 中位数", "C/N0 均值", "样本数"])}
 </div>
 
 <div class="card">
-<h2>3. 各片段 C/N0 中位数对比</h2>
+<h2>4. 各片段 C/N0 中位数对比</h2>
 <img src="data:image/png;base64,{fig_seg}" alt="per-segment cno">
 {html_table(seg_cmp_rows, ["天线", "片段", "C/N0 中位数", "C/N0 p25", "C/N0 p75", "PLL 锁定比", "跟踪星数", "参与解算星数", "伪距 RMS"])}
 </div>
 
 <div class="card">
-<h2>4. 同片段同系统 {first_name} − {second_name} 的 C/N0 中位数差值（{first_name} 减 {second_name}）</h2>
+<h2>5. 同片段同系统 {first_name} − {second_name} 的 C/N0 中位数差值（{first_name} 减 {second_name}）</h2>
 <p>正值表示 {first_name} 更高；负值表示 {second_name} 更高；±0.5 dB 内视为持平。</p>
 {html_table(diff_rows, ["片段", "系统", "共同星数", "差值中位数", "差值 p25", "差值 p75"])}
 </div>
 
 <div class="card">
-<h2>5. 逐星 C/N0 相关性分析</h2>
+<h2>6. 逐星 C/N0 相关性分析</h2>
 <p>对两颗天线均观测到的每颗卫星，按同一 GPS 周内秒（sow）配对计算 Pearson 相关系数 r。由于不同卫星 C/N0 基线不同，合并所有样本得到的总体 r 会受卫星构成影响；因此同时给出 Fisher-z 变换后的平均 r（跨卫星平均）以及逐星 r 的中位数/分布。r ≥ 0.7 为强相关，0.4–0.7 为中等相关，< 0.4 为弱相关。</p>
-<h3>5.1 相关性总体摘要</h3>
+<h3>6.1 相关性总体摘要</h3>
 {html_table(corr_summary_rows, ["总体样本 r", "Fisher-z 平均 r", "r 中位数", "r 均值", "r p25", "r p75", "卫星总数", "强相关数", "中等相关数", "弱相关数"])}
-<h3>5.2 按系统相关性摘要</h3>
+<h3>6.2 按系统相关性摘要</h3>
 {html_table(corr_sys_rows, ["系统", "卫星数", "Fisher-z 平均 r", "r 中位数", "r 均值", "强相关数", "中等相关数", "弱相关数"])}
-<h3>5.3 逐星相关性分布</h3>
+<h3>6.3 逐星相关性分布</h3>
 <img src="data:image/png;base64,{fig_corr if fig_corr else ''}" alt="correlation histogram">
-<h3>5.4 逐星相关性明细</h3>
+<h3>6.4 逐星相关性明细</h3>
 {html_table(corr_rows, ["卫星", "系统", "配对样本数", "Pearson r", "相关强度"])}
 </div>
 
 <div class="card">
-<h2>6. 显著性检验（Wilcoxon 符号秩检验）</h2>
+<h2>7. 显著性检验（Wilcoxon 符号秩检验）</h2>
 <p>对每个片段，取 {first_name} 与 {second_name} 的共同卫星 C/N0 中位数差值进行配对检验。p < 0.05 认为差异显著。</p>
 {html_table(wilcox_rows, ["片段", "配对卫星数", "差值中位数", "Z 值", "p 值", "显著性"])}
 </div>
 
 <div class="card">
-<h2>7. 卫星丢失情况（干扰段相对前一无干扰段）</h2>
+<h2>8. 卫星丢失情况（干扰段相对前一无干扰段）</h2>
 <p>列出在基线段出现、但在随后干扰段中连续丢失 ≥3 秒（按 5 Hz 历元折算）的卫星。</p>
 <img src="data:image/png;base64,{fig_loss if fig_loss else ''}" alt="satellite loss">
 {html_table(loss_rows, ["干扰片段", f"{first_name} 丢失数", f"{first_name} 丢失卫星", f"{second_name} 丢失数", f"{second_name} 丢失卫星"])}
 </div>
 
 <div class="card">
-<h2>8. 单天线干扰退化评估（参考 ETSI EN 303 413 1 dB 行业参考线）</h2>
+<h2>9. 单天线干扰退化评估（参考 ETSI EN 303 413 1 dB 行业参考线）</h2>
 <p>每种干扰段相对其前一无干扰段的中位数 ΔC/N0；≥ −1 dB 判定为通过行业参考线。该 1 dB 门槛是 UAS/GNSS 抗干扰评估中广泛使用的经验参考，不等同于完整的 ETSI 认证测试。</p>
 {html_table(assess_rows, ["天线", "干扰片段", "ΔC/N0 中位数", "ΔC/N0 p25", "ΔC/N0 p75", "丢失卫星数", "PLL 锁定变化", "参考线判据"])}
 </div>
 
 <div class="card">
-<h2>9. RANGECMP 各片段观测量质量对比</h2>
+<h2>10. RANGECMP 各片段观测量质量对比</h2>
 <p>来源：COM4 二进制 RANGECMP（ID 140）。StdDev-PSR 为伪距标准差（m），StdDev-ADR 为载波相位标准差（cycles）。</p>
 {html_table(rangecmp_cmp_rows, ["天线", "片段", "样本数", "StdDev-PSR 中位数", "StdDev-PSR 均值", "StdDev-ADR 中位数", "locktime 中位数", "Doppler 标准差", "C/N0 中位数"])}
 </div>
 
 <div class="card">
-<h2>10. RANGECMP 干扰段伪距标准差退化对比</h2>
+<h2>11. RANGECMP 干扰段伪距标准差退化对比</h2>
 <p>对每个真实干扰段，以其前一无干扰段为基线，统计共同卫星 StdDev-PSR 中位数变化。正值表示伪距标准差增大（观测量质量下降）。</p>
 {html_table(rangecmp_deg_cmp_rows, ["天线", "干扰片段", "共同卫星数", "ΔStdDev-PSR 中位数", "ΔStdDev-PSR p25", "ΔStdDev-PSR p75", "退化卫星数"])}
 </div>
 
 <div class="card">
-<h2>11. RANGECMP 按系统伪距标准差退化对比</h2>
+<h2>12. RANGECMP 按系统伪距标准差退化对比</h2>
 <p>按 GNSS 系统分组统计干扰段相对基线的 StdDev-PSR 变化。</p>
 {html_table(rangecmp_deg_sys_cmp_rows, ["天线", "干扰片段", "系统", "共同卫星数", "ΔStdDev-PSR 中位数", "ΔStdDev-PSR 均值", "ΔStdDev-PSR p25", "ΔStdDev-PSR p75", "退化卫星数", "改善卫星数"])}
 </div>
 
 <div class="card">
-<h2>12. RANGECMP 载波相位标准差（StdDev-ADR）对比</h2>
+<h2>13. RANGECMP 载波相位标准差（StdDev-ADR）对比</h2>
 <p>StdDev-ADR 为载波相位标准差（单位 cycles），反映载波相位观测质量。数值越小，相位观测越稳定。</p>
 {html_table(rangecmp_adr_cmp_rows, ["天线", "片段", "系统", "样本数", "StdDev-ADR 中位数", "StdDev-ADR 均值", "StdDev-ADR p75"])}
 </div>
 
 <div class="card">
-<h2>13. 联合失锁分析对比（TRACKSTAT + RANGECMP）</h2>
+<h2>14. 联合失锁分析对比（TRACKSTAT + RANGECMP）</h2>
 <p>同时检查 TRACKSTAT 与 RANGECMP 的卫星连续性。track_lost 表示 TRACKSTAT 中连续丢失 ≥3 秒；rc_lost 表示 RANGECMP 中连续丢失 ≥3 秒；both_lost 表示两源均判定丢失。</p>
 {html_table(joint_lock_cmp_rows, ["天线", "干扰片段", "共同卫星数", "TRACKSTAT 丢失数", "RANGECMP 丢失数", "两源均丢失数"])}
 </div>
 
 <div class="card">
-<h2>14. 两源均丢失卫星名单对比</h2>
+<h2>15. 两源均丢失卫星名单对比</h2>
 <p>同时被 TRACKSTAT 与 RANGECMP 判定为连续丢失 ≥3 秒的卫星，属于高置信度“真丢失”。</p>
 {html_table(both_lost_cmp_rows, ["天线", "干扰片段", "卫星", "系统", "TRACKSTAT 最大丢失时长", "RANGECMP 最大丢失时长"])}
 </div>
 
 <div class="card">
-<h2>15. RANGECMP 按频点观测量质量对比</h2>
+<h2>16. RANGECMP 按频点观测量质量对比</h2>
 <p>按信号频段（L1/L2/L5/E1/E5a/E5b/B1/B2/B3 等）拆分 RANGECMP 指标。392 MHz 的 3 次谐波 1176 MHz 距 L5/E5a 约 0.45 MHz；409 MHz 的 3 次谐波 1227 MHz 距 L2 约 0.60 MHz。但实际退化数据显示影响频段更广，说明干扰同时存在宽带阻塞与谐波耦合。</p>
 {html_table(band_cmp_rows, ["天线", "片段", "频段", "样本数", "StdDev-PSR 中位数", "StdDev-PSR 均值", "StdDev-ADR 中位数", "C/N0 中位数", "locktime 中位数"])}
 </div>
 
 <div class="card">
-<h2>16. RANGECMP 按频点伪距标准差退化对比</h2>
+<h2>17. RANGECMP 按频点伪距标准差退化对比</h2>
 <p>对每个真实干扰段，以其前一无干扰段为基线，按频段统计 StdDev-PSR 与 C/N0 变化。</p>
 {html_table(band_deg_cmp_rows, ["天线", "干扰片段", "频段", "基线 StdDev-PSR", "干扰 StdDev-PSR", "ΔStdDev-PSR", "基线 C/N0", "干扰 C/N0", "ΔC/N0"])}
 </div>
 
 <div class="card">
-<h2>17. StdDev-ADR 与 C/N0 联合散点对比</h2>
+<h2>18. StdDev-ADR 与 C/N0 联合散点对比</h2>
 <p>按频点着色、按天线形状区分展示干扰段内 StdDev-ADR 与 C/N0 的关系。若某频点在干扰下 C/N0 下降且 StdDev-ADR 上升，说明该频段受干扰影响显著。</p>
 <img src="data:image/png;base64,{adr_cno_cmp_fig if adr_cno_cmp_fig else ''}" alt="adr cno scatter comparison">
 </div>
 
 <div class="card">
-<h2>18. 综合结论</h2>
+<h2>19. 综合结论</h2>
 <p>{conclusion}</p>
 <p class="sub">说明：COM4 二进制 {first_name}/{second_name} 中，{com4_desc}；结论为“天线 + M21 内置抗干扰算法”的系统级结论。</p>
 </div>
