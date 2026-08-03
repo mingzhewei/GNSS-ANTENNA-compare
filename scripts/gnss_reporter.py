@@ -662,20 +662,31 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
             sig,
         ])
 
-    # Per-antenna interference assessment
+    # Interference degradation comparison: both antennas on one row per segment.
+    # Only ΔC/N0 median and lost-satellite count are shown; no pass/fail verdict.
     assess_rows = []
-    for ant, d in ant_data.items():
-        name = first_name if ant == first_ant else second_name
-        for _, r in d["interf_assess"].iterrows():
-            assess_rows.append([
-                name, r["interf_seg"],
-                fmt(r["delta_median"], 2),
-                fmt(r["delta_p25"], 2),
-                fmt(r["delta_p75"], 2),
-                int(r["n_lost"]),
-                fmt(r["pll_change_pct"], 1) + "%" if r["pll_change_pct"] is not None else "—",
-                "通过" if r["etsi_pass"] else "未通过",
-            ])
+    assess_first = {r["interf_seg"]: r for _, r in ant_data[first_ant]["interf_assess"].iterrows()}
+    assess_second = {r["interf_seg"]: r for _, r in ant_data[second_ant]["interf_assess"].iterrows()}
+    for seg, r1 in assess_first.items():
+        r2 = assess_second.get(seg)
+        d1, d2 = r1["delta_median"], (r2["delta_median"] if r2 is not None else None)
+        n1 = int(r1["n_lost"])
+        n2 = int(r2["n_lost"]) if r2 is not None else None
+        if d1 is None or d2 is None:
+            verdict = "数据不足"
+        elif abs(d1 - d2) < 0.5:
+            verdict = "两者相当"
+        elif d1 > d2:
+            verdict = f"{first_name} 衰减更小（少 {fmt(d1 - d2, 2)} dB）"
+        else:
+            verdict = f"{second_name} 衰减更小（少 {fmt(d2 - d1, 2)} dB）"
+        assess_rows.append([
+            seg,
+            fmt(d1, 2), n1,
+            fmt(d2, 2) if d2 is not None else "—",
+            n2 if n2 is not None else "—",
+            verdict,
+        ])
 
     # RANGECMP segment comparison rows
     rangecmp_cmp_rows = []
@@ -979,9 +990,12 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
         else:
             tie += 1
 
-    pass_first = sum(1 for _, r in ant_data[first_ant]["interf_assess"].iterrows() if r["etsi_pass"])
-    pass_second = sum(1 for _, r in ant_data[second_ant]["interf_assess"].iterrows() if r["etsi_pass"])
-    total_intf = len(ant_data[first_ant]["interf_assess"])
+    deg_first = [r["delta_median"] for _, r in ant_data[first_ant]["interf_assess"].iterrows()
+                 if r["delta_median"] is not None]
+    deg_second = [r["delta_median"] for _, r in ant_data[second_ant]["interf_assess"].iterrows()
+                  if r["delta_median"] is not None]
+    mean_deg_first = sum(deg_first) / len(deg_first) if deg_first else None
+    mean_deg_second = sum(deg_second) / len(deg_second) if deg_second else None
 
     total_lost_first = int(ant_data[first_ant]["sat_loss"]["n_lost"].sum()) if not ant_data[first_ant]["sat_loss"].empty else 0
     total_lost_second = int(ant_data[second_ant]["sat_loss"]["n_lost"].sum()) if not ant_data[second_ant]["sat_loss"].empty else 0
@@ -1110,7 +1124,7 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
 1. <b>整体水平</b>：两根天线整体 C/N0 中位数、PLL 锁定率、跟踪星数、参与解算星数均非常接近，{first_name} 与 {second_name} 无显著整体优劣。
 2. <b>相关性</b>：按卫星平均后的 Fisher-z 平均 r = {fmt(fisher_r, 3) if fisher_r is not None else "—"}（{r_strength_text(fisher_r)}），逐星 r 中位数 = {fmt(r_median, 3) if r_median is not None else "—"}；总体样本 r = {fmt(overall_r, 3) if overall_r is not None else "—"}。两根天线对同一电磁环境的响应具有一定一致性，但不同卫星间相关程度差异较大。
 3. <b>显著性检验</b>：Wilcoxon 符号秩检验显示 {win_first} 个片段 {first_name} 显著更高、{win_second} 个片段 {second_name} 显著更高、{tie} 个片段无显著差异。
-4. <b>抗干扰性（参考 ETSI EN 303 413 的 1 dB 行业参考线）</b>：{first_name} 在 {total_intf} 种干扰中通过 {pass_first} 种；{second_name} 通过 {pass_second} 种。
+4. <b>抗干扰性（干扰段平均 ΔC/N0）</b>：{first_name} 平均衰减 {fmt(mean_deg_first, 2) if mean_deg_first is not None else "—"} dB；{second_name} 平均衰减 {fmt(mean_deg_second, 2) if mean_deg_second is not None else "—"} dB（越接近 0 表示抗干扰越强，详见第 9 章逐场景对比）。
 5. <b>卫星保持</b>：干扰段累计丢失卫星数 {first_name} 为 {total_lost_first} 颗次，{second_name} 为 {total_lost_second} 颗次。
 6. <b>分场景退化</b>：{scenario_summary}
 7. <b>绝对接收能力</b>：基线（无干扰）C/N0 差值中位数 = {fmt(baseline_diff, 2) if baseline_diff is not None else "—"} dB（{abs_better} 基线更高）；干扰段 C/N0 差值中位数 = {fmt(interf_diff, 2) if interf_diff is not None else "—"} dB（{interf_abs_better} 干扰段绝对水平更高）。
@@ -1204,9 +1218,9 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 </div>
 
 <div class="card">
-<h2>9. 单天线干扰退化评估（参考 ETSI EN 303 413 1 dB 行业参考线）</h2>
-<p>每种干扰段相对其前一无干扰段的中位数 ΔC/N0；≥ −1 dB 判定为通过行业参考线。该 1 dB 门槛是 UAS/GNSS 抗干扰评估中广泛使用的经验参考，不等同于完整的 ETSI 认证测试。</p>
-{html_table(assess_rows, ["天线", "干扰片段", "ΔC/N0 中位数", "ΔC/N0 p25", "ΔC/N0 p75", "丢失卫星数", "PLL 锁定变化", "参考线判据"])}
+<h2>9. 干扰退化对比（双天线同屏）</h2>
+<p>每种干扰段相对其前一无干扰段的 C/N0 中位数变化（ΔC/N0，负值=衰减多少 dB）与丢失卫星数（连续丢失 ≥3 秒）。两根天线放在同一行直接对比：同一行里谁的 ΔC/N0 更接近 0、丢失数更少，谁在该干扰场景下抗干扰更强。</p>
+{html_table(assess_rows, ["干扰片段", f"{first_name} ΔC/N0 中位数", f"{first_name} 丢失卫星数", f"{second_name} ΔC/N0 中位数", f"{second_name} 丢失卫星数", "对比结论"])}
 </div>
 
 <div class="card">
