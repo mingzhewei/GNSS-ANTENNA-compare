@@ -13,7 +13,7 @@ import pandas as pd
 
 from gnss_analyzer import fmt, html_table, is_interference
 
-plt.rcParams["font.family"] = ["Heiti TC", "Songti SC", "Arial Unicode MS", "sans-serif"]
+plt.rcParams["font.family"] = ["Heiti TC", "Songti SC", "Arial Unicode MS", "Microsoft YaHei", "SimHei", "sans-serif"]
 plt.rcParams["axes.unicode_minus"] = False
 
 
