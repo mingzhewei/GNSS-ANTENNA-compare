@@ -51,6 +51,7 @@
 
 ### 3.2 安装步骤
 
+**macOS / Linux：**
 ```bash
 # 克隆仓库
 git clone https://github.com/mingzhewei/GNSS-ANTENNA-compare.git
@@ -58,12 +59,28 @@ cd GNSS-ANTENNA-compare
 
 # 创建虚拟环境
 python3 -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# .venv\Scripts\activate   # Windows
+source .venv/bin/activate
 
 # 安装依赖
 pip install numpy pandas matplotlib pyyaml
 ```
+
+**Windows：**
+```cmd
+# 克隆仓库
+git clone https://github.com/mingzhewei/GNSS-ANTENNA-compare.git
+cd GNSS-ANTENNA-compare
+
+# 一键配置（推荐）
+setup_windows.bat
+
+# 或 PowerShell（更友好）
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+.\setup_windows.ps1
+```
+
+详细 Windows 配置说明见 [README_WINDOWS.md](README_WINDOWS.md)。
+
 
 ---
 
