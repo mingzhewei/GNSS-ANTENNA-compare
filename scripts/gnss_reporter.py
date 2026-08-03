@@ -688,9 +688,13 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
             verdict,
         ])
 
-    # RANGECMP segment comparison rows
+    # RANGECMP segment comparison rows (interference segments only: baseline
+    # segments differ little and carry no anti-jamming information; the
+    # degradation chapters 11/12/17 already reference the baseline)
     rangecmp_cmp_rows = []
     for label in seg_labels:
+        if not is_interference(label):
+            continue
         for ant in (first_ant, second_ant):
             name = first_name if ant == first_ant else second_name
             r = ant_data[ant]["rangecmp_seg"][ant_data[ant]["rangecmp_seg"]["label"] == label]
@@ -751,21 +755,33 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
                     int(r["n_increase"]), int(r["n_decrease"]),
                 ])
 
-    # RANGECMP ADR comparison rows
+    # RANGECMP ADR comparison rows: interference segments only, interleaved
+    # so the two antennas sit on adjacent rows for the same segment+system.
     rangecmp_adr_cmp_rows = []
     for label in seg_labels:
+        if not is_interference(label):
+            continue
+        systems = []
         for ant in (first_ant, second_ant):
-            name = first_name if ant == first_ant else second_name
             adr = ant_data[ant]["rangecmp_adr"]
             if adr.empty:
                 continue
-            sub = adr[adr["segment"] == label]
-            for _, r in sub.iterrows():
-                rangecmp_adr_cmp_rows.append([
-                    name, label, r["sys"], int(r["n"]),
-                    fmt(r["std_adr_median"], 4), fmt(r["std_adr_mean"], 4),
-                    fmt(r["std_adr_p75"], 4),
-                ])
+            for s in adr[adr["segment"] == label]["sys"]:
+                if s not in systems:
+                    systems.append(s)
+        for s in systems:
+            for ant in (first_ant, second_ant):
+                name = first_name if ant == first_ant else second_name
+                adr = ant_data[ant]["rangecmp_adr"]
+                if adr.empty:
+                    continue
+                sub = adr[(adr["segment"] == label) & (adr["sys"] == s)]
+                for _, r in sub.iterrows():
+                    rangecmp_adr_cmp_rows.append([
+                        name, label, r["sys"], int(r["n"]),
+                        fmt(r["std_adr_median"], 4), fmt(r["std_adr_mean"], 4),
+                        fmt(r["std_adr_p75"], 4),
+                    ])
 
     # Joint locktime comparison rows
     joint_lock_cmp_rows = []
@@ -805,22 +821,34 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
                     fmt(r["track_gap_sec"], 1), fmt(r["rc_gap_sec"], 1),
                 ])
 
-    # RANGECMP band comparison rows
+    # RANGECMP band comparison rows: interference segments only, interleaved
+    # so the two antennas sit on adjacent rows for the same segment+band.
     band_cmp_rows = []
     for label in seg_labels:
+        if not is_interference(label):
+            continue
+        bands = []
         for ant in (first_ant, second_ant):
-            name = first_name if ant == first_ant else second_name
             band = ant_data[ant]["rangecmp_band"]
             if band.empty:
                 continue
-            sub = band[band["segment"] == label]
-            for _, r in sub.iterrows():
-                band_cmp_rows.append([
-                    name, label, r["band"], int(r["n"]),
-                    fmt(r["std_psr_median"], 3), fmt(r["std_psr_mean"], 3),
-                    fmt(r["std_adr_median"], 4), fmt(r["cno_median"], 1),
-                    fmt(r["locktime_median"], 1),
-                ])
+            for b in band[band["segment"] == label]["band"]:
+                if b not in bands:
+                    bands.append(b)
+        for b in bands:
+            for ant in (first_ant, second_ant):
+                name = first_name if ant == first_ant else second_name
+                band = ant_data[ant]["rangecmp_band"]
+                if band.empty:
+                    continue
+                sub = band[(band["segment"] == label) & (band["band"] == b)]
+                for _, r in sub.iterrows():
+                    band_cmp_rows.append([
+                        name, label, r["band"], int(r["n"]),
+                        fmt(r["std_psr_median"], 3), fmt(r["std_psr_mean"], 3),
+                        fmt(r["std_adr_median"], 4), fmt(r["cno_median"], 1),
+                        fmt(r["locktime_median"], 1),
+                    ])
 
     # RANGECMP band degradation comparison rows
     band_deg_cmp_rows = []
@@ -911,36 +939,6 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
         fig_loss = fig_to_base64(fig)
     else:
         fig_loss = None
-
-    # ADR vs C/No scatter comparison figure
-    adr_cno_cmp_fig = None
-    if ant_data[first_ant]["adr_cno_scatter"] or ant_data[second_ant]["adr_cno_scatter"]:
-        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-        axes = axes.flatten()
-        seg_names = ["409MHz 干扰", "392MHz 干扰", "4G/5G 干扰", "Wi-Fi 干扰"]
-        for ax, seg_name in zip(axes, seg_names):
-            for ant, marker in [(first_ant, "o"), (second_ant, "s")]:
-                scatter_items = [x for x in ant_data[ant]["adr_cno_scatter"] if x["segment"] == seg_name]
-                for item in scatter_items:
-                    band = item["band"]
-                    band_color = {"L1": "#4a90d9", "L2": "#e8963c", "L5": "#43a567",
-                                  "E1": "#8e6fc0", "E5a": "#d9634f", "E5b": "#9aa0a6",
-                                  "B1": "#3aa6a6", "B2": "#f0d88a", "B3": "#a03a30"}.get(band, "#5f6368")
-                    ax.scatter(item["cno"], item["std_adr"], s=8, alpha=0.4,
-                               color=band_color, marker=marker)
-            ax.set_xlabel("C/N0 (dB-Hz)")
-            ax.set_ylabel("StdDev-ADR (cycles)")
-            ax.set_title(f"{seg_name}")
-            ax.grid(True, linestyle="--", alpha=0.4)
-        from matplotlib.lines import Line2D
-        legend_elements = [
-            Line2D([0], [0], marker='o', color='w', markerfacecolor='#4a90d9', markersize=8, label=first_name),
-            Line2D([0], [0], marker='s', color='w', markerfacecolor='#e8963c', markersize=8, label=second_name),
-        ]
-        fig.legend(handles=legend_elements, loc='upper right')
-        fig.suptitle("StdDev-ADR vs C/N0 联合散点（颜色=频点，形状=天线）", y=0.995)
-        plt.tight_layout()
-        adr_cno_cmp_fig = fig_to_base64(fig)
 
     # Correlation summary rows
     corr_summary_rows = []
@@ -1224,8 +1222,8 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 </div>
 
 <div class="card">
-<h2>10. RANGECMP 各片段观测量质量对比</h2>
-<p>来源：COM4 二进制 RANGECMP（ID 140）。StdDev-PSR 为伪距标准差（m），StdDev-ADR 为载波相位标准差（cycles）。</p>
+<h2>10. RANGECMP 干扰段观测量质量对比</h2>
+<p>来源：COM4 二进制 RANGECMP（ID 140）。StdDev-PSR 为伪距标准差（m），StdDev-ADR 为载波相位标准差（cycles）。仅展示干扰段——无干扰段两根天线差异很小，且基线对比已体现在第 11/12/17 章的退化量中。同一干扰段内两根天线相邻两行，可直接对比；重点看 StdDev-PSR 中位数/均值与 locktime 中位数。</p>
 {html_table(rangecmp_cmp_rows, ["天线", "片段", "样本数", "StdDev-PSR 中位数", "StdDev-PSR 均值", "StdDev-ADR 中位数", "locktime 中位数", "Doppler 标准差", "C/N0 中位数"])}
 </div>
 
@@ -1243,7 +1241,7 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 
 <div class="card">
 <h2>13. RANGECMP 载波相位标准差（StdDev-ADR）对比</h2>
-<p>StdDev-ADR 为载波相位标准差（单位 cycles），反映载波相位观测质量。数值越小，相位观测越稳定。</p>
+<p>StdDev-ADR 为载波相位标准差（单位 cycles），反映载波相位观测质量，数值越小越稳定。仅展示干扰段；同一干扰段、同一系统下两根天线相邻两行，上下两行即为一个直接对比项。</p>
 {html_table(rangecmp_adr_cmp_rows, ["天线", "片段", "系统", "样本数", "StdDev-ADR 中位数", "StdDev-ADR 均值", "StdDev-ADR p75"])}
 </div>
 
@@ -1261,7 +1259,7 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 
 <div class="card">
 <h2>16. RANGECMP 按频点观测量质量对比</h2>
-<p>按信号频段（L1/L2/L5/E1/E5a/E5b/B1/B2/B3 等）拆分 RANGECMP 指标。392 MHz 的 3 次谐波 1176 MHz 距 L5/E5a 约 0.45 MHz；409 MHz 的 3 次谐波 1227 MHz 距 L2 约 0.60 MHz。但实际退化数据显示影响频段更广，说明干扰同时存在宽带阻塞与谐波耦合。</p>
+<p>按信号频段（L1/L2/L5/E1/E5a/E5b/B1/B2/B3 等）拆分 RANGECMP 指标，仅展示干扰段；同一干扰段、同一频点下两根天线相邻两行，保证 076 与竞品在完全相同的干扰源、相同的频段上直接对比。392 MHz 的 3 次谐波 1176 MHz 距 L5/E5a 约 0.45 MHz；409 MHz 的 3 次谐波 1227 MHz 距 L2 约 0.60 MHz。但实际退化数据显示影响频段更广，说明干扰同时存在宽带阻塞与谐波耦合。</p>
 {html_table(band_cmp_rows, ["天线", "片段", "频段", "样本数", "StdDev-PSR 中位数", "StdDev-PSR 均值", "StdDev-ADR 中位数", "C/N0 中位数", "locktime 中位数"])}
 </div>
 
@@ -1272,13 +1270,7 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 </div>
 
 <div class="card">
-<h2>18. StdDev-ADR 与 C/N0 联合散点对比</h2>
-<p>按频点着色、按天线形状区分展示干扰段内 StdDev-ADR 与 C/N0 的关系。若某频点在干扰下 C/N0 下降且 StdDev-ADR 上升，说明该频段受干扰影响显著。</p>
-<img src="data:image/png;base64,{adr_cno_cmp_fig if adr_cno_cmp_fig else ''}" alt="adr cno scatter comparison">
-</div>
-
-<div class="card">
-<h2>19. 综合结论</h2>
+<h2>18. 综合结论</h2>
 <p>{conclusion}</p>
 <p class="sub">说明：COM4 二进制 {first_name}/{second_name} 中，{com4_desc}；结论为“天线 + M21 内置抗干扰算法”的系统级结论。</p>
 </div>
