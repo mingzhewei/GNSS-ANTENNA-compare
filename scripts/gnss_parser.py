@@ -155,7 +155,7 @@ def parse_com3(path):
     gst = []
     gsv = []
     last_sow = None
-    with open(path, "r", errors="ignore") as f:
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
             line = line.strip()
             if not line:
