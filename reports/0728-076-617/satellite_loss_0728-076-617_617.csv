@@ -1,5 +1,5 @@
 ﻿baseline_seg,interf_seg,n_lost,n_gained,lost_svids,gained_svids,lost_durations,min_loss_sec
 无干扰 #1,409MHz 干扰,2,0,"BDS2,BDS7",,"3.2,10.0",3.0
-无干扰 #2,392MHz 干扰,4,1,"BDS2,BDS22,GAL28,GLO97",GPS21,"10.0,8.1,10.0,3.1",3.0
+无干扰 #2,392MHz 干扰,4,1,"BDS2,BDS22,GAL28,GLO60",GPS21,"10.0,10.0,8.1,3.1",3.0
 无干扰 #3,4G/5G 干扰,1,1,BDS42,BDS7,10.0,3.0
 无干扰 #4,Wi-Fi 干扰,0,2,,"BDS42,GAL28",,3.0

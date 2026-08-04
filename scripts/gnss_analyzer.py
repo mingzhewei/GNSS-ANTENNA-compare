@@ -103,7 +103,7 @@ def segment_metrics(ch_df, bp_df, gst_df, gsv_df, segments):
             pll_ratio = float((cdf["state"] == "PLL_LOCK").mean())
             lockzero_ratio = float((cdf["locktime"] < 0.5).mean())
             reject_ratio = float((cdf["reject"] != "GOOD").mean())
-            n_tracked = int(cdf.groupby("sow")["svid"].nunique().mean())
+            n_tracked = float(cdf.groupby("sow")["svid"].nunique().mean())
         else:
             agg_cno = None
             pll_ratio = lockzero_ratio = reject_ratio = None
@@ -171,7 +171,7 @@ def compute_interference_degradation(seg_metrics):
                 pre = prev_baseline["cno_by_sv"]
                 interf = seg["cno_by_sv"]
                 for svid, p in pre.items():
-                    if svid in interf:
+                    if svid in interf and p["n"] >= 5 and interf[svid]["n"] >= 5:
                         rows.append({
                             "baseline_seg": prev_label,
                             "interf_seg": label,
@@ -206,8 +206,6 @@ def compute_satellite_loss(ch_df, segments, min_loss_sec=3.0):
     sows = sorted(ch_df["sow"].unique())
     if len(sows) < 2:
         return pd.DataFrame(results)
-    dt = float(np.median(np.diff(sows)))
-    min_epochs = max(1, int(round(min_loss_sec / dt)))
 
     def _continuous_loss(df, ms, me, svid):
         epochs = sorted(df[(df["sow"] >= ms) & (df["sow"] < me) & (df["svid"] == svid)]["sow"].tolist())
@@ -327,8 +325,13 @@ def compute_antenna_correlation(ch_df1, ch_df2):
     rows = []
     all_x, all_y = [], []
     for svid in svids:
-        d1 = ch_df1[ch_df1["svid"] == svid][["sow", "cno"]].rename(columns={"cno": "cno1"})
-        d2 = ch_df2[ch_df2["svid"] == svid][["sow", "cno"]].rename(columns={"cno": "cno2"})
+        # One satellite can have multiple channel records per epoch (one per
+        # frequency); aggregate to a single per-epoch value (median C/No)
+        # before pairing, so the inner join stays one-to-one on (svid, sow).
+        d1 = (ch_df1[ch_df1["svid"] == svid].groupby("sow")["cno"].median()
+              .rename("cno1").reset_index())
+        d2 = (ch_df2[ch_df2["svid"] == svid].groupby("sow")["cno"].median()
+              .rename("cno2").reset_index())
         merged = pd.merge(d1, d2, on="sow", how="inner")
         if len(merged) < 30:
             continue
@@ -611,8 +614,6 @@ def joint_locktime_analysis(ch_df, rangecmp_df, segments, min_loss_sec=3.0):
     sows = sorted(ch_df["sow"].unique())
     if len(sows) < 2:
         return pd.DataFrame(rows)
-    dt = float(np.median(np.diff(sows)))
-    min_epochs = max(1, int(round(min_loss_sec / dt)))
 
     def _continuous_loss(df, ms, me, svid):
         epochs = sorted(df[(df["sow"] >= ms) & (df["sow"] < me) & (df["svid"] == svid)]["sow"].tolist())
@@ -682,7 +683,7 @@ def list_both_lost_satellites(joint_lock_df):
 
 
 def rangecmp_band_analysis(rangecmp_df, segments):
-    """Per-band (L1/L2/L5/E1/E5a/B1/B2 etc.) RANGECMP metrics per segment."""
+    """Per-band (L1/L2/L5/E1/E5a/B1/B2I/B2a etc.) RANGECMP metrics per segment."""
     rows = []
     for seg in segments:
         ms, me = seg["middle_start"], seg["middle_end"]

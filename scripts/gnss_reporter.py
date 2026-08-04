@@ -122,7 +122,11 @@ def plot_epoch_metrics(ch_df, bp_df, gst_df, gsv_df, segments, title_prefix):
     if not bp_df.empty:
         ep2 = ep2.merge(bp_df[["sow", "svs", "soln_svs"]], on="sow", how="left")
     if not gsv_df.empty:
-        gsv_ep = gsv_df.groupby("sow")["in_view"].sum().reset_index().rename(columns={"in_view": "gsv_visible"})
+        # Each talker repeats the same in_view total across its multi-message
+        # group; take one value per (sow, talker) before summing across talkers.
+        gsv_ep = (gsv_df.groupby(["sow", "talker"])["in_view"].first()
+                  .groupby("sow").sum().reset_index()
+                  .rename(columns={"in_view": "gsv_visible"}))
         ep2 = ep2.merge(gsv_ep, on="sow", how="left")
 
     fig, ax = plt.subplots(figsize=(12, 4.5))
@@ -341,7 +345,7 @@ def antenna_report(ant_id, ant_name, data, test_name):
                 band = item["band"]
                 color = {"L1": "#4a90d9", "L2": "#e8963c", "L5": "#43a567",
                          "E1": "#8e6fc0", "E5a": "#d9634f", "E5b": "#9aa0a6",
-                         "B1": "#3aa6a6", "B2": "#f0d88a", "B3": "#a03a30"}.get(band, "#5f6368")
+                         "B1": "#3aa6a6", "B2I": "#f0d88a", "B2a": "#d4b845", "B3": "#a03a30"}.get(band, "#5f6368")
                 ax.scatter(item["cno"], item["std_adr"], s=8, alpha=0.5,
                            color=color, label=band)
             ax.set_xlabel("C/N0 (dB-Hz)")
@@ -439,9 +443,10 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 <h3>5.2 每历元 PLL 锁定比例</h3>
 <img src="data:image/png;base64,{figures['pll_time']}" alt="pll time">
 <h3>5.3 卫星数时间序列</h3>
-<p>图中同时给出 TRACKSTATA 实际跟踪星数、BESTPOS 跟踪星数、BESTPOS 参与解算星数、GSV 可见星数，便于区分“可见”“跟踪”“可用”三个概念。</p>
+<p>图中同时给出 TRACKSTATA 实际跟踪星数、BESTPOS 跟踪星数、BESTPOS 参与解算星数、GSV 可见星数，便于区分“可见”“跟踪”“参与解算”三个概念（跟踪给出 TRACKSTAT 与 BESTPOS 两个来源）。</p>
 <img src="data:image/png;base64,{figures['sat_count_time']}" alt="sat count time">
 <h3>5.4 GPGST 伪距 RMS</h3>
+<p>该 RMS 反映伪距单点解（伪距定位）的质量，不代表 RTK 固定解精度；此处仅作为干扰退化的相对指标使用。</p>
 <img src="data:image/png;base64,{figures.get('pr_rms_time','')}" alt="pr rms time">
 </div>
 
@@ -452,7 +457,7 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 
 <div class="card">
 <h2>7. 干扰段卫星丢失情况</h2>
-<p>下列卫星在相邻前一无干扰段被跟踪，但在干扰段中连续丢失 ≥3 秒（按 5 Hz 历元折算）。</p>
+<p>下列卫星在相邻前一无干扰段被跟踪，但在干扰段中连续丢失 ≥3 秒（按数据实际采样间隔判定）。</p>
 {html_table(loss_rows, ["基线片段", "干扰片段", "丢失数", "丢失卫星", "新增数", "新增卫星"])}
 </div>
 
@@ -502,7 +507,7 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 
 <div class="card">
 <h2>15. RANGECMP 按频点观测量质量统计</h2>
-<p>按信号频段（L1/L2/L5/E1/E5a/E5b/B1/B2/B3 等）拆分 RANGECMP 指标。392 MHz 的 3 次谐波 1176 MHz 距 L5/E5a 约 0.45 MHz；409 MHz 的 3 次谐波 1227 MHz 距 L2 约 0.60 MHz。但实际退化数据显示影响频段更广，说明干扰同时存在宽带阻塞与谐波耦合。</p>
+<p>按信号频段（L1/L2/L5/E1/E5a/E5b/B1/B2I/B2a/B3 等）拆分 RANGECMP 指标。392 MHz 的 3 次谐波 1176 MHz 距 L5/E5a/B2a 约 0.45 MHz；409 MHz 的 3 次谐波 1227 MHz 距 L2 约 0.60 MHz。但实际退化数据显示影响频段更广，说明干扰同时存在宽带阻塞与谐波耦合。</p>
 {html_table(band_rows, ["片段", "频段", "样本数", "StdDev-PSR 中位数", "StdDev-PSR 均值", "StdDev-ADR 中位数", "C/N0 中位数", "locktime 中位数"])}
 </div>
 
@@ -1117,9 +1122,23 @@ def comparison_report(ant_data, corr_df, overall_r, corr_stats, wilcoxon_df,
             com4_desc_parts.append(f"{name} 为非标准格式（ID {list(ids.keys())}）")
     com4_desc = "；".join(com4_desc_parts)
 
+    # Data-driven overall C/No comparison for conclusion item 1
+    med_first = float(ant_data[first_ant]["ch_df"]["cno"].median())
+    med_second = float(ant_data[second_ant]["ch_df"]["cno"].median())
+    cno_gap = med_first - med_second
+    if abs(cno_gap) < 0.5:
+        overall_cno_text = (f"两根天线整体 C/N0 中位数非常接近（{first_name} "
+                            f"{fmt(med_first)} dB-Hz vs {second_name} {fmt(med_second)} dB-Hz）")
+    elif cno_gap > 0:
+        overall_cno_text = (f"{first_name} 整体 C/N0 中位数更高（{fmt(med_first)} dB-Hz vs "
+                            f"{second_name} {fmt(med_second)} dB-Hz，高 {fmt(cno_gap, 2)} dB）")
+    else:
+        overall_cno_text = (f"{second_name} 整体 C/N0 中位数更高（{fmt(med_second)} dB-Hz vs "
+                            f"{first_name} {fmt(med_first)} dB-Hz，高 {fmt(-cno_gap, 2)} dB）")
+
     conclusion = f"""基于 {test_name} 真实同步测试数据（COM3 TRACKSTAT C/No）的对比结论：
 <br><br>
-1. <b>整体水平</b>：两根天线整体 C/N0 中位数、PLL 锁定率、跟踪星数、参与解算星数均非常接近，{first_name} 与 {second_name} 无显著整体优劣。
+1. <b>整体水平</b>：{overall_cno_text}；PLL 锁定率、跟踪星数、参与解算星数等整体指标详见第 2 章。
 2. <b>相关性</b>：按卫星平均后的 Fisher-z 平均 r = {fmt(fisher_r, 3) if fisher_r is not None else "—"}（{r_strength_text(fisher_r)}），逐星 r 中位数 = {fmt(r_median, 3) if r_median is not None else "—"}；总体样本 r = {fmt(overall_r, 3) if overall_r is not None else "—"}。两根天线对同一电磁环境的响应具有一定一致性，但不同卫星间相关程度差异较大。
 3. <b>显著性检验</b>：Wilcoxon 符号秩检验显示 {win_first} 个片段 {first_name} 显著更高、{win_second} 个片段 {second_name} 显著更高、{tie} 个片段无显著差异。
 4. <b>抗干扰性（干扰段平均 ΔC/N0）</b>：{first_name} 平均衰减 {fmt(mean_deg_first, 2) if mean_deg_first is not None else "—"} dB；{second_name} 平均衰减 {fmt(mean_deg_second, 2) if mean_deg_second is not None else "—"} dB（越接近 0 表示抗干扰越强，详见第 9 章逐场景对比）。
@@ -1161,7 +1180,7 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 <div class="card">
 <h2>1. 数据时间范围与片段追溯</h2>
 <p><b>原始数据时间范围</b>：GPS 周 {raw_week}，周内秒 {raw_start:.3f} s ~ {raw_end:.3f} s（总时长 {raw_span:.1f} s）。</p>
-<p><b>片段定义</b>：按用户提供的连续片段时长依次切分；每个片段取中间 10 秒作为稳态分析窗口。带 * 号表示该片段被文件实际长度截断。</p>
+<p><b>片段定义</b>：按用户提供的连续片段时长依次切分；每个片段取中间 10 秒作为稳态分析窗口。带 * 号表示该片段被文件实际长度截断。片段窗口以第一根天线（{first_name}）的文件起点构建，按绝对 GPS 时间对齐后套用到两根天线。</p>
 <h3>1.1 用户提供的片段定义</h3>
 {html_table(seg_def_rows, ["序号", "片段标签", "定义时长(s)", "片段起(s)", "片段止(s)", "分析窗口起(s)", "分析窗口止(s)", "窗口时长(s)"])}
 </div>
@@ -1191,7 +1210,7 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 
 <div class="card">
 <h2>6. 逐星 C/N0 相关性分析</h2>
-<p>对两颗天线均观测到的每颗卫星，按同一 GPS 周内秒（sow）配对计算 Pearson 相关系数 r。由于不同卫星 C/N0 基线不同，合并所有样本得到的总体 r 会受卫星构成影响；因此同时给出 Fisher-z 变换后的平均 r（跨卫星平均）以及逐星 r 的中位数/分布。r ≥ 0.7 为强相关，0.4–0.7 为中等相关，< 0.4 为弱相关。</p>
+<p>对两颗天线均观测到的每颗卫星，先把同一历元多频点通道的 C/N0 聚合为单值（取中位数），再按同一 GPS 周内秒（sow）一一配对计算 Pearson 相关系数 r，故配对样本数即共同历元数。由于不同卫星 C/N0 基线不同，合并所有样本得到的总体 r 会受卫星构成影响；因此同时给出 Fisher-z 变换后的平均 r（跨卫星平均）以及逐星 r 的中位数/分布。r ≥ 0.7 为强相关，0.4–0.7 为中等相关，< 0.4 为弱相关。</p>
 <h3>6.1 相关性总体摘要</h3>
 {html_table(corr_summary_rows, ["总体样本 r", "Fisher-z 平均 r", "r 中位数", "r 均值", "r p25", "r p75", "卫星总数", "强相关数", "中等相关数", "弱相关数"])}
 <h3>6.2 按系统相关性摘要</h3>
@@ -1210,7 +1229,7 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 
 <div class="card">
 <h2>8. 卫星丢失情况（干扰段相对前一无干扰段）</h2>
-<p>列出在基线段出现、但在随后干扰段中连续丢失 ≥3 秒（按 5 Hz 历元折算）的卫星。</p>
+<p>列出在基线段出现、但在随后干扰段中连续丢失 ≥3 秒（按数据实际采样间隔判定）的卫星。</p>
 <img src="data:image/png;base64,{fig_loss if fig_loss else ''}" alt="satellite loss">
 {html_table(loss_rows, ["干扰片段", f"{first_name} 丢失数", f"{first_name} 丢失卫星", f"{second_name} 丢失数", f"{second_name} 丢失卫星"])}
 </div>
@@ -1223,7 +1242,7 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 
 <div class="card">
 <h2>10. RANGECMP 干扰段观测量质量对比</h2>
-<p>来源：COM4 二进制 RANGECMP（ID 140）。StdDev-PSR 为伪距标准差（m），StdDev-ADR 为载波相位标准差（cycles）。仅展示干扰段——无干扰段两根天线差异很小，且基线对比已体现在第 11/12/17 章的退化量中。同一干扰段内两根天线相邻两行，可直接对比；重点看 StdDev-PSR 中位数/均值与 locktime 中位数。</p>
+<p>来源：COM4 二进制 RANGECMP（ID 140）。StdDev-PSR 为伪距标准差（m），StdDev-ADR 为载波相位标准差（cycles）。仅展示干扰段——无干扰段两根天线差异很小，且基线对比已体现在第 11/12/17 章的退化量中。同一干扰段内两根天线相邻两行，可直接对比；重点看 StdDev-PSR 中位数/均值与 locktime 中位数。注意：RANGECMP 的 C/N0 为 1 dB 整数量化、钳位在 20–51 dB-Hz，与 TRACKSTAT 的 C/No（0.25 dB 步进、无钳位）口径不同。</p>
 {html_table(rangecmp_cmp_rows, ["天线", "片段", "样本数", "StdDev-PSR 中位数", "StdDev-PSR 均值", "StdDev-ADR 中位数", "locktime 中位数", "Doppler 标准差", "C/N0 中位数"])}
 </div>
 
@@ -1259,7 +1278,7 @@ img{{max-width:100%;border:1px solid #e5e7eb;border-radius:6px}}
 
 <div class="card">
 <h2>16. RANGECMP 按频点观测量质量对比</h2>
-<p>按信号频段（L1/L2/L5/E1/E5a/E5b/B1/B2/B3 等）拆分 RANGECMP 指标，仅展示干扰段；同一干扰段、同一频点下两根天线相邻两行，保证 076 与竞品在完全相同的干扰源、相同的频段上直接对比。392 MHz 的 3 次谐波 1176 MHz 距 L5/E5a 约 0.45 MHz；409 MHz 的 3 次谐波 1227 MHz 距 L2 约 0.60 MHz。但实际退化数据显示影响频段更广，说明干扰同时存在宽带阻塞与谐波耦合。</p>
+<p>按信号频段（L1/L2/L5/E1/E5a/E5b/B1/B2I/B2a/B3 等）拆分 RANGECMP 指标，仅展示干扰段；同一干扰段、同一频点下两根天线相邻两行，保证 076 与竞品在完全相同的干扰源、相同的频段上直接对比。392 MHz 的 3 次谐波 1176 MHz 距 L5/E5a/B2a 约 0.45 MHz；409 MHz 的 3 次谐波 1227 MHz 距 L2 约 0.60 MHz。但实际退化数据显示影响频段更广，说明干扰同时存在宽带阻塞与谐波耦合。注意：RANGECMP 的 C/N0 为 1 dB 整数量化、钳位在 20–51 dB-Hz，与 TRACKSTAT 的 C/No（0.25 dB 步进、无钳位）口径不同。</p>
 {html_table(band_cmp_rows, ["天线", "片段", "频段", "样本数", "StdDev-PSR 中位数", "StdDev-PSR 均值", "StdDev-ADR 中位数", "C/N0 中位数", "locktime 中位数"])}
 </div>
 

@@ -28,7 +28,7 @@ TESTS = [
 BASELINE_NAME = "北天BT-T076"
 SCENARIOS = ["409MHz 干扰", "392MHz 干扰", "4G/5G 干扰", "Wi-Fi 干扰"]
 BASELINE_SEGS = ["无干扰 #1", "无干扰 #2", "无干扰 #3", "无干扰 #4", "无干扰 #5"]
-BAND_ORDER = ["L1", "L2", "L5", "E1", "E5a", "E5b", "B1", "B2", "B3"]
+BAND_ORDER = ["L1", "L2", "L5", "E1", "E5a", "E5b", "B1", "B2I", "B2a", "B3"]
 
 
 def read_csv(test, pattern):

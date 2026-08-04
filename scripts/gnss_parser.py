@@ -23,7 +23,7 @@ SIGNAL_MAP = {
     (1, 0): "L1", (1, 1): "L2", (1, 5): "L2", (1, 6): "L3",
     (2, 0): "L1", (2, 6): "L5",
     (3, 1): "E1", (3, 2): "E1", (3, 6): "E6", (3, 7): "E6", (3, 12): "E5a", (3, 17): "E5b", (3, 20): "E5",
-    (4, 0): "B1", (4, 1): "B2", (4, 2): "B3", (4, 4): "B1", (4, 5): "B2", (4, 6): "B3", (4, 7): "B1", (4, 9): "B2",
+    (4, 0): "B1", (4, 1): "B2I", (4, 2): "B3", (4, 4): "B1", (4, 5): "B2I", (4, 6): "B3", (4, 7): "B1", (4, 9): "B2a",
     (5, 0): "L1", (5, 14): "L5", (5, 16): "L1", (5, 17): "L2", (5, 27): "L6",
     (6, 0): "L5",
     (7, 19): "L-Band",
@@ -40,15 +40,13 @@ def sys_from_status(st):
 
 
 def global_svid(sys, prn):
-    """Return a globally-unique satellite identifier string, system+PRN."""
-    if sys == "GLO":
-        return f"GLO{prn + 37}" if prn else None
-    if sys == "QZS":
-        return f"QZS{191 + prn}"
-    if sys == "SBAS":
-        return f"SBAS{119 + prn}"
-    if sys in ("GPS", "GAL", "BDS", "NAVIC", "OTH"):
-        return f"{sys}{prn}"
+    """Return a globally-unique satellite identifier string, system+PRN.
+
+    GLO PRN is already Slot+37 (38-61) per UG016; QZS/SBAS use the raw PRN,
+    consistent with RANGECMP numbering.
+    """
+    if sys in ("GPS", "GLO", "SBAS", "GAL", "BDS", "QZS", "NAVIC", "OTH"):
+        return f"{sys}{prn}" if prn else None
     return None
 
 
@@ -81,12 +79,12 @@ def parse_trackstat_line(line):
         locktime = float(flds[i + 6])
         psrres = float(flds[i + 7])
         reject = flds[i + 8]
-        psrresorb = float(flds[i + 9].split("*")[0])
+        psr_weight = float(flds[i + 9].split("*")[0])
         chs.append({
             "prn": prn, "glofreq": glofreq, "status": ch_tr_status,
             "psr": psr, "doppler": doppler, "cno": cno,
             "locktime": locktime, "psrres": psrres,
-            "reject": reject, "psrresorb": psrresorb,
+            "reject": reject, "psr_weight": psr_weight,
         })
         i += 10
     return {
@@ -111,7 +109,9 @@ def parse_bestpos_line(line):
         "stn_id": flds[10], "diff_age": float(flds[11]), "sol_age": float(flds[12]),
         "svs": int(flds[13]), "soln_svs": int(flds[14]),
         "ggl1": int(flds[15]), "ggl1l2": int(flds[16]),
-        "ext_sol_stat": flds[17], "galileo_sig": flds[18],
+        "reserved": flds[17],
+        "ext_sol_stat": flds[18], "galileo_sig": flds[19],
+        "gps_glo_sig": flds[20] if len(flds) > 20 else None,
     }
 
 
@@ -132,18 +132,20 @@ def parse_gst_line(line):
 
 
 def parse_gsv_line(line):
-    """Parse one NMEA GSV line."""
-    flds = line.strip().split(",")
+    """Parse one NMEA GSV line. Trailing empty satellite slots are skipped."""
+    flds = line.strip().split("*")[0].split(",")
     talker = flds[0][1:3]
     total = int(flds[3])
     sats = []
     i = 4
     while i + 4 <= len(flds):
-        prn = int(flds[i]) if flds[i] else 0
-        elev = int(flds[i + 1]) if flds[i + 1] else 0
-        azim = int(flds[i + 2]) if flds[i + 2] else 0
-        snr = int(flds[i + 3].split("*")[0]) if flds[i + 3] else 0
-        sats.append({"prn": prn, "elev": elev, "azim": azim, "snr": snr})
+        if flds[i]:
+            sats.append({
+                "prn": int(flds[i]),
+                "elev": int(flds[i + 1]) if flds[i + 1] else 0,
+                "azim": int(flds[i + 2]) if flds[i + 2] else 0,
+                "snr": int(flds[i + 3]) if flds[i + 3] else 0,
+            })
         i += 4
     return {"talker": talker, "in_view": total, "sats": sats}
 
@@ -261,7 +263,7 @@ def parse_rangecmp_file(path):
                     state = ch_status & 0x1F
                     pll_lock = bool((ch_status >> 10) & 1)
                     code_lock = bool((ch_status >> 12) & 1)
-                    parity = bool((ch_status >> 15) & 1)
+                    parity = bool((ch_status >> 11) & 1)
                     sig_code = (ch_status >> 21) & 0x1F
                     sig_band = SIGNAL_MAP.get((sys_id, sig_code), "UNK")
 
@@ -278,7 +280,7 @@ def parse_rangecmp_file(path):
                     locktime = locktime_raw / 32.0
                     cno = 20 + cno_raw
                     sys_name = SYS_MAP.get(sys_id, "UNK")
-                    svid = f"{sys_name}{prn}" if sys_name != "GLO" else f"GLO{prn + 37}"
+                    svid = f"{sys_name}{prn}"
 
                     records.append({
                         "sow": sow, "week": week,
